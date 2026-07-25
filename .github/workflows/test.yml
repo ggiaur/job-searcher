@@ -1,0 +1,36 @@
+name: Tesztek
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      MOCK_MODE: "true"
+      GCP_PROJECT_ID: "mock-project"
+      GEMINI_API_KEY: "mock-key"
+      FIRECRAWL_API_KEY: "mock-key"
+      TELEGRAM_BOT_TOKEN: "mock-token"
+      TELEGRAM_CHAT_ID: "mock-chat-id"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 3.11 beállítás
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Függőségek telepítése
+        run: pip install -r requirements.txt
+
+      - name: Tesztek futtatása
+        run: pytest tests/ -v --tb=short
+
+      - name: Teszt összefoglaló
+        if: always()
+        run: pytest tests/ --tb=no -q

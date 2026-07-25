@@ -1,0 +1,82 @@
+[
+  {
+    "url": "https://www.profession.hu/allas/it-vezeto-global-tech-kft-budapest-1001",
+    "title": "IT vezető",
+    "company": "Global Tech Kft.",
+    "location": "Budapest (Hibrid)",
+    "salary": "Bruttó 1.200.000 - 1.500.000 Ft",
+    "description": "Dinamikusan növekvő vállalatunk keres 6 fős csapat élére IT vezetőt. Feladatok: IT infrastruktúra és üzemeltetés irányítása, Microsoft 365 és Azure migráció felügyelete, IT-költségvetés és beszerzés tervezése. Elvárás: 15+ év IT tapasztalat, legalább 4 év csapatvezetés."
+  },
+  {
+    "url": "https://www.cvonline.hu/allas/it-infrastruktura-vezeto-cloudnet-zrt-1002",
+    "title": "IT Infrastruktúra és Üzemeltetési Vezető",
+    "company": "CloudNet Zrt.",
+    "location": "Budapest",
+    "salary": "Bruttó 1.400.000 Ft",
+    "description": "Keresünk IT osztályvezetőt az alábbi területek felügyeletére: Linux, Windows, VMware, Docker és Azure felhős rendszerek. Feladatok: 8 fős üzemeltetési csapat vezetése, folyamatoptimalizálás és szállítói kapcsolatok tartása."
+  },
+  {
+    "url": "https://www.profession.hu/allas/it-projektmenedzser-digital-solutions-1003",
+    "title": "IT Projektmenedzser",
+    "company": "Digital Solutions Kft.",
+    "location": "Budapest / Remote",
+    "salary": "Bruttó 950.000 Ft",
+    "description": "Közintézményi és vállalati digitalizációs projektek vezetésére keresünk tapasztalt IT Projektmenedzsert. Feladatok: IT fejlesztések, MI/AI megoldások bevezetése, projektbüdzsé és határidők tartása."
+  },
+  {
+    "url": "https://www.cvonline.hu/allas/digitalizacios-vezeto-cio-innovate-corp-1004",
+    "title": "Digitalizációs Vezető / CIO",
+    "company": "Innovate Corp",
+    "location": "Budapest",
+    "salary": "Bruttó 1.800.000 Ft",
+    "description": "Vállalati stratégiai IT és digitalizációs vezetőt keresünk. Feladatok: Generatív AI és M365 rendszerek bevezetése, IT csapat irányítása, beszerzési és költségvetési folyamatok kitalálása."
+  },
+  {
+    "url": "https://www.profession.hu/allas/rendszergazda-sysadmin-kft-1005",
+    "title": "Szenior Rendszergazda",
+    "company": "SysAdmin Kft.",
+    "location": "Budaörs",
+    "salary": "Bruttó 650.000 Ft",
+    "description": "Windows és Linux szerverek üzemeltetése, VPN és hálózati infrastruktúra karbantartása. Nincs csapatvezetés."
+  },
+  {
+    "url": "https://www.cvonline.hu/allas/helpdesk-munkatars-call-support-1006",
+    "title": "Helpdesk Munkatárs (1st line)",
+    "company": "Call Support Kft.",
+    "location": "Budapest",
+    "salary": "Bruttó 450.000 Ft",
+    "description": "Telefon és email alapú 1st line ügyfélszolgálat, jelszó-helyreállítás és jegykezelés."
+  },
+  {
+    "url": "https://www.profession.hu/allas/senior-python-fejleszto-code-factory-1007",
+    "title": "Senior Python Fejlesztő",
+    "company": "Code Factory Kft.",
+    "location": "Remote",
+    "salary": "Bruttó 1.300.000 Ft",
+    "description": "Kizárólag szoftverfejlesztés Python/Django alapon. Backend API-k építése, nincsenek vezetői feladatok."
+  },
+  {
+    "url": "https://www.cvonline.hu/allas/junior-it-tamogato-entry-tech-1008",
+    "title": "Junior IT Támogató",
+    "company": "Entry Tech Kft.",
+    "location": "Budapest",
+    "salary": "Bruttó 400.000 Ft",
+    "description": "Pályakezdő IT támogató kollégát keresünk nyomtatók és PC-k beállítására."
+  },
+  {
+    "url": "https://www.profession.hu/allas/ettermi-menedzser-gastro-group-1009",
+    "title": "Éttermi Menedzser",
+    "company": "Gastro Group",
+    "location": "Budapest",
+    "salary": "Bruttó 600.000 Ft",
+    "description": "Étterem napi műszakjainak irányítása, felszolgálók beosztása."
+  },
+  {
+    "url": "https://www.profession.hu/allas/it-vezeto-global-tech-kft-budapest-1001",
+    "title": "IT vezető",
+    "company": "Global Tech Kft.",
+    "location": "Budapest (Hibrid)",
+    "salary": "Bruttó 1.200.000 - 1.500.000 Ft",
+    "description": "Dinamikusan növekvő vállalatunk keres 6 fős csapat élére IT vezetőt. Feladatok: IT infrastruktúra és üzemeltetés irányítása, Microsoft 365 és Azure migráció felügyelete, IT-költségvetés és beszerzés tervezése. Elvárás: 15+ év IT tapasztalat, legalább 4 év csapatvezetés."
+  }
+]
