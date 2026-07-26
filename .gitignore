@@ -43,4 +43,7 @@ Thumbs.db
 # Profile
 profile/
 
+# Dynamic Output Response
+LATEST_RESPONSE.md
+
 
