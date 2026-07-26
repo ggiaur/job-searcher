@@ -56,3 +56,22 @@ def test_cost_alert(monkeypatch):
     metrics = agent.run()
     assert metrics is not None
 
+def test_strict_structural_assertions():
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+    jobs = agent.scraper.scrape_jobs()
+    for job in jobs[:5]:
+        res = agent.analyzer.analyze_job(job)
+        assert 0 <= res["score"] <= 100
+        assert 1 <= len(res["summary"]) <= 500
+        assert job["url"].startswith("http://") or job["url"].startswith("https://")
+
+def test_zero_listings_alert(monkeypatch):
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+    # Force scraper to return empty list
+    monkeypatch.setattr(agent.scraper, "scrape_jobs", lambda: [])
+    metrics = agent.run()
+    assert metrics["found"] == 0
+
+

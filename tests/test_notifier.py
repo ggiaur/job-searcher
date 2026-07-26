@@ -60,3 +60,18 @@ def test_notifier_inline_keyboard():
     res = notifier.send_job_notification(job, 95, "Kiváló pozíció")
     assert res is True
 
+def test_notifier_html_escaping():
+    notifier = TelegramNotifier(mock_mode=True)
+    job = {
+        "title": "<script>IT & Cloud Manager</script>",
+        "company": "Company <A&B>",
+        "location": "Budapest & Pest",
+        "url": "https://www.profession.hu/allas/123"
+    }
+    msg = notifier.format_job_message(job, 90, "Teszt <summary> & leírás")
+    assert "&lt;script&gt;" in msg
+    assert "IT &amp; Cloud Manager" in msg
+    assert "Company &lt;A&amp;B&gt;" in msg
+    assert "Teszt &lt;summary&gt; &amp; leírás" in msg
+
+

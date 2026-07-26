@@ -109,7 +109,10 @@ Leírás: {description[:3000]}
                     ),
                 )
                 
-                data = json.loads(response.text)
+                text_content = response.text or ""
+                data = self._parse_json_response(text_content)
+                if not data or "score" not in data:
+                    return {"score": 0, "summary": "Gemini elemzési hiba."}
                 return {
                     "score": int(data.get("score", 0)),
                     "summary": str(data.get("summary", ""))
@@ -128,13 +131,34 @@ Leírás: {description[:3000]}
                                 response_schema=JobEvaluationSchema,
                             ),
                         )
-                        data = json.loads(res.text)
-                        return {
-                            "score": int(data.get("score", 0)),
-                            "summary": str(data.get("summary", ""))
-                        }
+                        data = self._parse_json_response(res.text or "")
+                        if data and "score" in data:
+                            return {
+                                "score": int(data.get("score", 0)),
+                                "summary": str(data.get("summary", ""))
+                            }
                     except Exception as fallback_err:
                         logger.error(f"Fallback model failed: {fallback_err}")
                 time.sleep(2 * (attempt + 1))
 
         return {"score": 0, "summary": "Gemini elemzési hiba."}
+
+    def _parse_json_response(self, text: str) -> Optional[Dict[str, Any]]:
+        """Cleans markdown blocks or extra surrounding text and parses JSON robustly."""
+        if not text:
+            return None
+        text_clean = text.strip()
+        if "```" in text_clean:
+            import re
+            match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text_clean, re.DOTALL)
+            if match:
+                text_clean = match.group(1)
+        else:
+            import re
+            match = re.search(r"(\{.*?\})", text_clean, re.DOTALL)
+            if match:
+                text_clean = match.group(1)
+        try:
+            return json.loads(text_clean)
+        except Exception:
+            return None

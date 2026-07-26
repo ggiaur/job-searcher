@@ -20,17 +20,24 @@ class TelegramNotifier:
                 logger.error(f"Error initializing Telegram bot: {e}")
 
     def format_job_message(self, job: Dict[str, Any], score: int, summary: str) -> str:
-        title = job.get("title", "Ismeretlen pozíció")
-        company = job.get("company", "Nincs megadva cég")
-        location = job.get("location", "Nincs megadva")
-        salary = job.get("salary", "").strip()
+        # Escape HTML characters to prevent Telegram API Markdown/HTML parsing crashes
+        def escape_html(text: str) -> str:
+            if not text:
+                return ""
+            return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+        title = escape_html(job.get("title", "Ismeretlen pozíció"))
+        company = escape_html(job.get("company", "Nincs megadva cég"))
+        location = escape_html(job.get("location", "Nincs megadva"))
+        salary = escape_html(job.get("salary", "").strip())
         url = job.get("url", "")
+        summary_escaped = escape_html(summary)
 
         msg_lines = [
             f"🎯 {title}",
             f"🏢 {company}",
             f"📍 {location}",
-            f"📌 Forrás: {job.get('source_url', 'Profession.hu IT vezető')}",
+            f"📌 Forrás: {escape_html(job.get('source_url', 'Profession.hu IT vezető'))}",
         ]
 
         if salary:
@@ -38,7 +45,7 @@ class TelegramNotifier:
 
         msg_lines.extend([
             f"⭐ Relevancia: {score}/100",
-            f"📝 {summary}",
+            f"📝 {summary_escaped}",
             f"🔗 {url}"
         ])
 

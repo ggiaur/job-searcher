@@ -45,3 +45,24 @@ def test_nofluffjobs_scraper():
     assert jobs is not None
     assert len(jobs) > 0
 
+def test_parse_profession_raw_snapshot():
+    scraper = JobScraper(mock_mode=True)
+    snapshot_path = os.path.join(os.path.dirname(__file__), "fixtures", "snapshots", "profession_raw.md")
+    with open(snapshot_path, "r", encoding="utf-8") as f:
+        raw_md = f.read()
+    listings = scraper._parse_markdown_listings(raw_md, "https://www.profession.hu/allasok/it")
+    urls = [item["url"] for item in listings]
+    assert "https://www.profession.hu/allas/it-vezeto-company-123456?hash=abc" in urls
+    assert "https://www.profession.hu/allas/infra-osztalyvezeto-999888" in urls
+    assert not any("gipszkarton" in url for url in urls)
+    assert not any("allasok/it-telecom" in url for url in urls)
+
+def test_parse_cvonline_raw_snapshot():
+    scraper = JobScraper(mock_mode=True)
+    snapshot_path = os.path.join(os.path.dirname(__file__), "fixtures", "snapshots", "cvonline_raw.md")
+    with open(snapshot_path, "r", encoding="utf-8") as f:
+        raw_md = f.read()
+    listings = scraper._parse_markdown_listings(raw_md, "https://www.cvonline.hu/hu/allasok/it")
+    assert len(listings) >= 1
+
+
