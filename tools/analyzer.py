@@ -5,12 +5,14 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-TARGET_PERSONA_PROMPT = """
-Keresett pozíciók: IT vezető, IT manager, IT osztályvezető, infrastruktúra vezető, IT projektmenedzser, Digitalizációs vezető, CIO.
-Tapasztalat: 20+ év IT, 4+ év csapatvezetés.
-Kulcsszavak: IT infrastruktúra, üzemeltetés, fejlesztés, csapatirányítás (6 fős csapat), M365, Azure, Linux, Docker, VPN, IT-költségvetés, beszerzés, MI/AI.
-Kizáró feltételek (0 pont): tisztán helpdesk / 1st line support, junior / entry-level, nem IT menedzsment, kizárólag szoftverfejlesztő / programozó.
-"""
+def _load_persona() -> str:
+    persona_path = os.path.join(
+        os.path.dirname(__file__), "..", "profile", "persona.md"
+    )
+    with open(persona_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+TARGET_PERSONA_PROMPT = _load_persona()
 
 class JobAnalyzer:
     def __init__(self, api_key: str = None, mock_mode: bool = None):
@@ -22,7 +24,11 @@ class JobAnalyzer:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
+                model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+                try:
+                    self.model = genai.GenerativeModel(model_name)
+                except Exception:
+                    self.model = genai.GenerativeModel('gemini-2.0-flash')
             except Exception as e:
                 logger.error(f"Error initializing Gemini API: {e}")
                 self.model = None
@@ -66,55 +72,50 @@ class JobAnalyzer:
                 }
 
         # Real Gemini API call with rate limiting and exponential retry
-        if not self.api_key:
-            logger.error("GEMINI_API_KEY is not set.")
+        if not self.model:
+            logger.error("Gemini model is not initialized.")
             return None
 
-        # Rate limiting: max 10 calls / min (6 seconds delay)
+        # Rate limiting: max 5 calls / min (12.5 seconds delay)
         now = time.time()
         time_since_last = now - self.last_call_time
-        if time_since_last < 6.0:
-            time.sleep(6.0 - time_since_last)
+        if time_since_last < 12.5:
+            time.sleep(12.5 - time_since_last)
 
-        max_retries = 3
-        backoff = 2.0
+        prompt = f"""
+A megadott profil alapján értékeld az alábbi állásajánlatot!
 
-        for attempt in range(max_retries):
+Profil és Szabályok:
+{TARGET_PERSONA_PROMPT}
+
+Álláshirdetés:
+Cím: {title}
+Leírás: {description[:3000]}
+
+Válaszolj KIZÁRÓLAG az alábbi JSON formátumban:
+{{
+  "score": <0 és 100 közötti egész szám>,
+  "summary": "<2-3 mondatos magyar nyelvű összefoglaló, hogy miért releváns vagy miért nem>"
+}}
+"""
+
+        for attempt in range(4):
             try:
                 self.last_call_time = time.time()
-                prompt = (
-                    f"Értékeld az alábbi álláshirdetés relevanciáját a célszemély profilja alapján 0 és 100 közötti pontszámmal!\n"
-                    f"Profil:\n{TARGET_PERSONA_PROMPT}\n\n"
-                    f"Állás megnevezése: {title}\n"
-                    f"Leírás: {description}\n\n"
-                    f"Válasz formátum: Csak egy JSON objektumot adj meg az alábbi szerkezetben:\n"
-                    f'{{"score": <int 0-100>, "summary": "<max 500 karakteres 2-3 mondatos magyar összefoglaló>"}}'
-                )
                 response = self.model.generate_content(prompt)
                 text = response.text.strip()
+                if "```json" in text:
+                    text = text.split("```json")[1].split("```")[0].strip()
+                elif "```" in text:
+                    text = text.split("```")[1].split("```")[0].strip()
                 
-                # Clean code blocks if present
-                if text.startswith("```json"):
-                    text = text[7:]
-                if text.endswith("```"):
-                    text = text[:-3]
-                
-                import json
-                data = json.loads(text.strip())
-                score = int(data.get("score", 0))
-                summary = str(data.get("summary", ""))[:500]
-                
-                # Clamp score
-                score = max(0, min(100, score))
+                data = json.loads(text)
                 return {
-                    "score": score,
-                    "summary": summary
+                    "score": int(data.get("score", 0)),
+                    "summary": str(data.get("summary", ""))
                 }
             except Exception as e:
-                logger.warning(f"Gemini API call attempt {attempt+1} failed: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(backoff)
-                    backoff *= 2.0
-                else:
-                    logger.error("All 3 retries for Gemini API failed.")
-                    return None
+                logger.warning(f"Gemini API call attempt {attempt + 1} failed: {e}")
+                time.sleep(15 * (attempt + 1))
+
+        return {"score": 0, "summary": "Gemini elemzési hiba."}

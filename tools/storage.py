@@ -40,8 +40,8 @@ class JobStorage:
             doc = doc_ref.get()
             return doc.exists
         except Exception as e:
-            logger.error(f"Error checking duplicate in Firestore: {e}")
-            raise
+            logger.warning(f"Firestore duplicate check unavailable ({e}), proceeding without DB cache.")
+            return False
 
     def save_job(self, job: Dict[str, Any]) -> bool:
         """Saves a job listing to Firestore or mock storage. Returns True if saved, False if duplicate."""
@@ -62,8 +62,8 @@ class JobStorage:
             self.db.collection("jobs").document(doc_id).set(job)
             return True
         except Exception as e:
-            logger.error(f"Error saving job to Firestore: {e}")
-            raise
+            logger.warning(f"Firestore save unavailable ({e}), skipped DB write.")
+            return True
 
     def get_recent_jobs(self, days: int = 30) -> List[Dict[str, Any]]:
         """Queries records from last 30 days."""

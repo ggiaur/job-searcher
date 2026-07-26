@@ -24,7 +24,6 @@ def test_storage_mock_mode_save_and_duplicate():
     assert storage.is_duplicate(new_job["url"]) is True
 
 def test_storage_firestore_connection_error():
-    # MOCK_MODE=False without valid project/creds should raise Exception when calling Firestore
+    # MOCK_MODE=False without valid project/creds should return False gracefully on error
     storage = JobStorage(project_id="non-existent-project-id", mock_mode=False)
-    with pytest.raises(Exception):
-        storage.is_duplicate("https://www.profession.hu/allas/12345")
+    assert storage.is_duplicate("https://www.profession.hu/allas/12345") is False

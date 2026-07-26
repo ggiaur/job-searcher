@@ -1,6 +1,9 @@
-import pytest
-import os
-from tools.analyzer import JobAnalyzer
+from tools.analyzer import JobAnalyzer, _load_persona
+
+def test_analyzer_load_persona():
+    persona = _load_persona()
+    assert persona is not None
+    assert "Célszemély profil" in persona
 
 def test_analyzer_mock_mode_relevant():
     analyzer = JobAnalyzer(mock_mode=True)
@@ -28,14 +31,12 @@ def test_analyzer_mock_mode_irrelevant():
     assert res["score"] < 40
 
 def test_analyzer_retry_and_failure_handling(monkeypatch):
-    # Test that 3 failed retries return None without crash
     analyzer = JobAnalyzer(mock_mode=False, api_key="invalid-key")
     
-    # Mock model generate_content to raise Exception
     class ExceptionModel:
         def generate_content(self, prompt):
             raise Exception("API Error")
             
     analyzer.model = ExceptionModel()
     res = analyzer.analyze_job({"title": "Test", "description": "Test"})
-    assert res is None
+    assert res == {"score": 0, "summary": "Gemini elemzési hiba."}

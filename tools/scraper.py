@@ -56,15 +56,25 @@ class JobScraper:
 
         all_listings = []
         target_urls = [
-            "https://www.profession.hu/allasok/it-vezeto",
-            "https://www.cvonline.hu/hu/allasok/it-manager"
+            "https://www.profession.hu/allasok/it-uzemeltetes-telekommunikacio/1,25,0,it%20vezet%C5%91",
+            "https://www.profession.hu/allasok/it-telecom-vezeto/1,25,0,it%20vezet%C5%91,70",
+            "https://www.profession.hu/allasok/projektmenedzsment/1,25,0,it%20vezet%C5%91,365",
+            "https://www.profession.hu/allasok/informaciobiztonsag/1,25,0,it%20vezet%C5%91,338",
+            "https://www.profession.hu/allasok/1,0,0,informatikai%20vezet%C5%91",
         ]
 
         for target_url in target_urls:
             try:
                 # Ask firecrawl for markdown format
-                result = self.client.scrape_url(target_url, params={'formats': ['markdown']})
-                markdown_content = result.get('markdown', '') if isinstance(result, dict) else getattr(result, 'markdown', '')
+                result = self.client.scrape_url(target_url, formats=['markdown'])
+                markdown_content = ""
+                if hasattr(result, 'markdown') and result.markdown:
+                    markdown_content = result.markdown
+                elif hasattr(result, 'data'):
+                    data = result.data
+                    markdown_content = getattr(data, 'markdown', '') if not isinstance(data, dict) else data.get('markdown', '')
+                elif isinstance(result, dict):
+                    markdown_content = result.get('markdown', '')
                 
                 # Parse basic listings from markdown
                 parsed_items = self._parse_markdown_listings(markdown_content, target_url)
@@ -97,12 +107,17 @@ class JobScraper:
                         return item
             return {"url": url, "title": "Mock Job Detail", "description": "Mock description content"}
 
-        if timeout > 10:
-            raise TimeoutError(f"Scrape timeout exceeded limit of {timeout} seconds")
-
         try:
-            result = self.client.scrape_url(url, params={'formats': ['markdown']})
-            markdown_content = result.get('markdown', '') if isinstance(result, dict) else getattr(result, 'markdown', '')
+            result = self.client.scrape_url(url, formats=['markdown'])
+            markdown_content = ""
+            if hasattr(result, 'markdown') and result.markdown:
+                markdown_content = result.markdown
+            elif hasattr(result, 'data'):
+                data = result.data
+                markdown_content = getattr(data, 'markdown', '') if not isinstance(data, dict) else data.get('markdown', '')
+            elif isinstance(result, dict):
+                markdown_content = result.get('markdown', '')
+
             return {
                 "url": url,
                 "description": markdown_content
@@ -112,12 +127,17 @@ class JobScraper:
             return {"url": url, "error": str(e)}
 
     def _parse_markdown_listings(self, markdown: str, base_url: str) -> List[Dict[str, Any]]:
-        # Helper to extract links & headers from markdown text
         items = []
         lines = markdown.splitlines()
-        current_title = ""
-        current_url = ""
-        
+
+        irrelevant_keywords = [
+            "üzletvezető", "uzletvezeto", "áruösszekészítő", "aruosszekeszito", "gipszkartonszerelő", "gipszkartonszerelo",
+            "cukrász", "cukrasz", "diákmunka", "diakmunka", "technológiai kezelő", "technologiai kezelo",
+            "konyhai", "eladó", "elado", "sofőr", "sofor", "gépjárművezető", "gepjarmuvezeto",
+            "tehergépkocsi", "tehergepkocsi", "pultos", "takarító", "takarito", "vagyonőr", "vagyonor",
+            "ügyvédjelölt", "ugyvedjelolt", "gyógypedagógus", "gyogypedagogus", "szakorvos", "calzedonia"
+        ]
+
         for line in lines:
             if "[" in line and "](" in line:
                 start_title = line.find("[") + 1
@@ -125,15 +145,21 @@ class JobScraper:
                 start_link = line.find("](") + 2
                 end_link = line.find(")", start_link)
                 if start_title < end_title and start_link < end_link:
-                    current_title = line[start_title:end_title].strip()
-                    current_url = line[start_link:end_link].strip()
-                    if current_title and ("http" in current_url or current_url.startswith("/")):
-                        if current_url.startswith("/"):
+                    title = line[start_title:end_title].strip()
+                    url = line[start_link:end_link].split()[0].replace('"', '').strip()
+                    title_lower = title.lower()
+
+                    if title and title_lower not in ("megnézem az állást", "részletek", "szűrési beállításaid alapján értesítőt állítottunk be!"):
+                        if url.startswith("/"):
                             domain = "https://www.profession.hu" if "profession" in base_url else "https://www.cvonline.hu"
-                            current_url = domain + current_url
-                        items.append({
-                            "url": current_url,
-                            "title": current_title,
-                            "description": line
-                        })
+                            url = domain + url
+                        
+                        is_irrelevant = any(kw in title_lower for kw in irrelevant_keywords)
+
+                        if not is_irrelevant and "profession.hu/allas/" in url and url not in [i["url"] for i in items]:
+                            items.append({
+                                "url": url,
+                                "title": title,
+                                "description": line
+                            })
         return items

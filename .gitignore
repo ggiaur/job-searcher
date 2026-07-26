@@ -1,7 +1,14 @@
 # Environment & Secrets
 .env
-.env*.local
+.env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.crt
+service_account*.json
+credentials*.json
+secrets*.json
 
 # Python
 __pycache__/
@@ -32,4 +39,8 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Profile
+profile/
+
 

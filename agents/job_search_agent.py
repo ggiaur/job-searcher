@@ -42,6 +42,13 @@ class JobSearchAgent:
                 duplicate_count += 1
                 continue
 
+            # Fast local pre-filtering to save Gemini API quota & speed up processing
+            title_lower = job.get("title", "").lower()
+            irrelevant_keywords = ["tehergépkocsi", "pultos", "szakács", "cukrász", "áruösszekészítő", "takarító", "konyhai", "eladó", "sofőr", "gépjárművezető", "vagyonőr"]
+            if any(kw in title_lower for kw in irrelevant_keywords) and not any(it_kw in title_lower for it_kw in ["it", "vezető", "manager", "igazgató", "szerver"]):
+                logger.info(f"Skipping obvious non-IT job locally: {job.get('title')}")
+                continue
+
             analysis = self.analyzer.analyze_job(job)
             if not analysis:
                 logger.warning(f"Could not analyze job: {url}")
