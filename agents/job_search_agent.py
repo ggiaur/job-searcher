@@ -80,12 +80,14 @@ class JobSearchAgent:
                 logger.info(f"Job score {score} below threshold {RELEVANCE_THRESHOLD}: {url}")
 
         runtime = time.time() - start_time
+        scraped_urls_count = getattr(self.scraper, "last_scraped_urls_count", 5)
         self.notifier.send_summary_notification(
             found=found_count,
             relevant=relevant_count,
             duplicate=duplicate_count,
             sent=sent_count,
-            runtime=runtime
+            runtime=runtime,
+            scraped_urls=scraped_urls_count
         )
 
         summary_metrics = {

@@ -9,4 +9,12 @@ Ez a fájl tartalmazza azokat az interim döntéseket, amelyeket az fejlesztés 
 ## 2. Hard Limits és Rate Limits
 - **Scraper:** Szigorú 100 hirdetés/futás korlát bevezetése kódszinten.
 - **Analyzer:** Gemini API hívások esetén max 10 kérés/perc betartása, 3 kísérletig terjedő exponenciális retry logikával.
-- **Firecrawl:** Kizárólag sima markdown kimenet kérése (JSON extraction mód elkerülése az 1 kredit/oldal arány megőrzéséhez).
+## 3. Diagnosztikai Teszt Eredmények (Éles URL Validáció)
+- **Tesztelt első URL:** `https://www.profession.hu/allasok/it-uzemeltetes-telekommunikacio/1,25,0,it%20vezet%C5%91`
+- **Eredmény:** **20 hirdetés** került kinyerésre (ami meghaladja a 15-ös minimális elvárási küszöbértéket).
+- **Minta találatok:**
+  - *Vezető felügyelő (IT felügyelet)* - Magyar Nemzeti Bank
+  - *IT/OT Security Governance és Szabályozási osztályvezető* - MVM Services Zrt.
+  - *IT service desk csoportvezető* - BKM Budapesti Közművek Zrt.
+  - *IT Manager* - Howmet KÖFÉM Kft.
+

@@ -62,6 +62,7 @@ class JobScraper:
             "https://www.profession.hu/allasok/informaciobiztonsag/1,25,0,it%20vezet%C5%91,338",
             "https://www.profession.hu/allasok/1,0,0,informatikai%20vezet%C5%91",
         ]
+        self.last_scraped_urls_count = len(target_urls)
 
         for target_url in target_urls:
             try:
@@ -78,6 +79,10 @@ class JobScraper:
                 
                 # Parse basic listings from markdown
                 parsed_items = self._parse_markdown_listings(markdown_content, target_url)
+                if not parsed_items:
+                    logger.error(f"0 listings extracted from URL: {target_url}")
+                    from tools.notifier import TelegramNotifier
+                    TelegramNotifier(mock_mode=self.mock_mode).send_error_notification(f"0 találat jött erről az URL-ről: {target_url}")
                 for item in parsed_items:
                     if len(all_listings) >= MAX_JOBS_LIMIT:
                         break

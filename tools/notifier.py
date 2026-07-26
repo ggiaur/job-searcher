@@ -65,11 +65,12 @@ class TelegramNotifier:
             logger.error(f"Telegram API error when sending job notification: {e}")
             return False
 
-    def send_summary_notification(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float) -> bool:
+    def send_summary_notification(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float, scraped_urls: int = 5) -> bool:
         """Sends run summary notification."""
         summary_msg = (
             f"📊 **Futási Összefoglaló**\n"
-            f"• Talált hirdetések: {found}\n"
+            f"• Scraped URL-ek száma: {scraped_urls}\n"
+            f"• Talált hirdetések összesen: {found}\n"
             f"• Duplikátumok: {duplicate}\n"
             f"• Releváns (60+ pont): {relevant}\n"
             f"• Elküldött értesítések: {sent}\n"
@@ -89,4 +90,19 @@ class TelegramNotifier:
             return True
         except Exception as e:
             logger.error(f"Telegram API error when sending summary notification: {e}")
+            return False
+
+    def send_error_notification(self, error_message: str) -> bool:
+        """Sends an error alert via Telegram."""
+        msg = f"🚨 **Job Searcher Hibaüzenet**\n{error_message}"
+        if self.mock_mode:
+            logger.info(f"[MOCK TELEGRAM ERROR]\n{msg}")
+            return True
+        if not self.bot or not self.chat_id:
+            return False
+        try:
+            asyncio.run(self.bot.send_message(chat_id=self.chat_id, text=msg, parse_mode="Markdown"))
+            return True
+        except Exception as e:
+            logger.error(f"Telegram error notification failed: {e}")
             return False
