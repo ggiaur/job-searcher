@@ -33,10 +33,14 @@ def test_analyzer_mock_mode_irrelevant():
 def test_analyzer_retry_and_failure_handling(monkeypatch):
     analyzer = JobAnalyzer(mock_mode=False, api_key="invalid-key")
     
-    class ExceptionModel:
-        def generate_content(self, prompt):
+    class ExceptionModels:
+        def generate_content(self, model, contents, config=None):
             raise Exception("API Error")
+
+    class ExceptionClient:
+        def __init__(self):
+            self.models = ExceptionModels()
             
-    analyzer.model = ExceptionModel()
+    analyzer.client = ExceptionClient()
     res = analyzer.analyze_job({"title": "Test", "description": "Test"})
     assert res == {"score": 0, "summary": "Gemini elemzési hiba."}
