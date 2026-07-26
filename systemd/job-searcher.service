@@ -1,0 +1,14 @@
+[Unit]
+Description=Job Searcher AI Scheduled Search Pipeline
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/projects/job-searcher
+ExecStart=/usr/bin/python3 /srv/projects/job-searcher/main.py
+User=bj
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

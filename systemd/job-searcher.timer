@@ -1,0 +1,9 @@
+[Unit]
+Description=Timer for Job Searcher AI Twice Daily Execution
+
+[Timer]
+OnCalendar=*-*-* 08,17:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

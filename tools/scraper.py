@@ -55,13 +55,17 @@ class JobScraper:
             return []
 
         all_listings = []
-        target_urls = [
-            "https://www.profession.hu/allasok/it-uzemeltetes-telekommunikacio/1,25,0,it%20vezet%C5%91",
-            "https://www.profession.hu/allasok/it-telecom-vezeto/1,25,0,it%20vezet%C5%91,70",
-            "https://www.profession.hu/allasok/projektmenedzsment/1,25,0,it%20vezet%C5%91,365",
-            "https://www.profession.hu/allasok/informaciobiztonsag/1,25,0,it%20vezet%C5%91,338",
-            "https://www.profession.hu/allasok/1,0,0,informatikai%20vezet%C5%91",
-        ]
+        env_target_urls = os.getenv("TARGET_URLS", "").strip()
+        if env_target_urls:
+            target_urls = [u.strip() for u in env_target_urls.split(",") if u.strip()]
+        else:
+            target_urls = [
+                "https://www.profession.hu/allasok/it-uzemeltetes-telekommunikacio/1,25,0,it%20vezet%C5%91",
+                "https://www.profession.hu/allasok/it-telecom-vezeto/1,25,0,it%20vezet%C5%91,70",
+                "https://www.profession.hu/allasok/projektmenedzsment/1,25,0,it%20vezet%C5%91,365",
+                "https://www.profession.hu/allasok/informaciobiztonsag/1,25,0,it%20vezet%C5%91,338",
+                "https://www.profession.hu/allasok/1,0,0,informatikai%20vezet%C5%91",
+            ]
         self.last_scraped_urls_count = len(target_urls)
 
         for target_url in target_urls:

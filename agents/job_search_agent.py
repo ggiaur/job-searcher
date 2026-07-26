@@ -81,6 +81,10 @@ class JobSearchAgent:
             else:
                 logger.info(f"Job score {score} below threshold {RELEVANCE_THRESHOLD}: {url}")
 
+        if found_count == 0:
+            logger.warning("Zero job listings scraped! Scraper or portal structure might have changed.")
+            self.notifier.send_error_notification("⚠️ Figyelem: A Scraper 0 hirdetést talált. Lehetséges,hogy megváltozott a Profession.hu felépítése!")
+
         runtime = time.time() - start_time
         scraped_urls_count = getattr(self.scraper, "last_scraped_urls_count", 5)
         self.notifier.send_summary_notification(
