@@ -99,12 +99,18 @@ class TelegramNotifier:
         total_usd = estimated_gemini_usd + estimated_firecrawl_usd
         total_huf = total_usd * 365
 
+        # Calculate conversion & drop-off percentages
+        filtered_out = found - relevant
+        relevant_pct = (relevant / found * 100) if found > 0 else 0.0
+        filtered_pct = (filtered_out / found * 100) if found > 0 else 0.0
+
         summary_msg = (
             f"📊 **Futási Összefoglaló & Költségek**\n"
             f"• Scraped URL-ek száma: {scraped_urls}\n"
             f"• Talált hirdetések összesen: {found}\n"
             f"• Duplikátumok: {duplicate}\n"
-            f"• Releváns (60+ pont): {relevant}\n"
+            f"• Releváns (60+ pont): {relevant} ({relevant_pct:.1f}%)\n"
+            f"• Kiszűrt / Kiesett állások: {filtered_out} ({filtered_pct:.1f}%)\n"
             f"• Elküldött értesítések: {sent}\n"
             f"• Futási idő: {runtime:.2f} mp\n"
             f"💵 **Becsült futási költség:** ~${total_usd:.4f} USD (~{total_huf:.2f} Ft)\n"
