@@ -21,6 +21,8 @@ class JobSearchAgent:
         self.analyzer = JobAnalyzer(mock_mode=self.mock_mode)
         self.storage = JobStorage(mock_mode=self.mock_mode)
         self.notifier = TelegramNotifier(mock_mode=self.mock_mode)
+        self.detail_circuit_broken = False
+        self.consecutive_detail_failures = 0
 
     def run(self) -> Dict[str, Any]:
         start_time = time.time()
