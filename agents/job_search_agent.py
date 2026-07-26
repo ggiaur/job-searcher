@@ -49,6 +49,23 @@ class JobSearchAgent:
                 logger.info(f"Skipping obvious non-IT job locally: {job.get('title')}")
                 continue
 
+            # Enrich short descriptions with full detail page markdown
+            description = job.get("description", "")
+            if len(description) < 200:
+                logger.info(f"Description short ({len(description)} chars), fetching detail for: {url}")
+                try:
+                    detail = self.scraper.scrape_job_detail(url)
+                    if detail and isinstance(detail, dict) and not detail.get("error"):
+                        job["description"] = detail.get("description") or detail.get("markdown") or description
+                        if detail.get("company"):
+                            job["company"] = detail.get("company")
+                        if detail.get("location"):
+                            job["location"] = detail.get("location")
+                        if detail.get("salary"):
+                            job["salary"] = detail.get("salary")
+                except Exception as detail_err:
+                    logger.warning(f"Failed to fetch job detail for {url}: {detail_err}")
+
             logger.info(f"Analyzing job [{job.get('title')}]: {url}")
             analysis = self.analyzer.analyze_job(job)
             if not analysis:

@@ -74,4 +74,31 @@ def test_zero_listings_alert(monkeypatch):
     metrics = agent.run()
     assert metrics["found"] == 0
 
+def test_fetch_job_detail_before_analysis(monkeypatch):
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+    
+    detail_called = []
+    original_detail = agent.scraper.scrape_job_detail
+    def mock_scrape_detail(url, timeout=10):
+        detail_called.append(url)
+        return {
+            "url": url,
+            "description": "Ez egy részletes, hosszú állásleírás, amely tartalmazza a céget, az elvárásokat és a felelősségi köröket.",
+            "company": "Detailed Company Zrt",
+            "location": "Budapest"
+        }
+    
+    monkeypatch.setattr(agent.scraper, "scrape_job_detail", mock_scrape_detail)
+    monkeypatch.setattr(agent.scraper, "scrape_jobs", lambda: [{
+        "url": "https://www.profession.hu/allas/short-job-123",
+        "title": "IT vezető",
+        "description": "Rövid leírás"
+    }])
+    
+    metrics = agent.run()
+    assert len(detail_called) == 1
+    assert detail_called[0] == "https://www.profession.hu/allas/short-job-123"
+
+
 
