@@ -48,6 +48,5 @@ Budapest és agglomeráció, remote/hibrid elfogadható
 - Nem IT fókuszú menedzsment
 
 ## Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)
-### Preferált minták (Kiemelt relevancia):
-- [IT service desk csoportve] ok: Gombnyomás: 🤔 FONTOLÓRA VESZEM
-- [IT service desk csoportve] ok: Gombnyomás: 🤔 FONTOLÓRA VESZEM
+### Elutasított minták (Pontszám csökkentő / Kizáró tényezők):
+- [Junior IT Support] ok: Túl sokat kell utazni és nem IT vezetői pozíció
