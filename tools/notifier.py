@@ -110,7 +110,9 @@ class TelegramNotifier:
             return False
 
         try:
-            asyncio.run(self.bot.send_message(chat_id=self.chat_id, text=summary_msg, parse_mode="Markdown"))
+            from telegram import Bot
+            bot = Bot(token=self.bot_token)
+            asyncio.run(bot.send_message(chat_id=self.chat_id, text=summary_msg, parse_mode="Markdown"))
             return True
         except Exception as e:
             logger.error(f"Telegram API error when sending summary notification: {e}")
