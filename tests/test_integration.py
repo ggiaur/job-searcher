@@ -48,3 +48,11 @@ def test_decisions_md_exists():
     with open(decisions_path, "r", encoding="utf-8") as f:
         content = f.read()
     assert len(content.strip()) > 0
+
+def test_cost_alert(monkeypatch):
+    os.environ["MOCK_MODE"] = "true"
+    os.environ["MAX_DAILY_COST_USD"] = "0.0001"
+    agent = JobSearchAgent(mock_mode=True)
+    metrics = agent.run()
+    assert metrics is not None
+

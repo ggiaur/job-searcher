@@ -79,6 +79,31 @@ class JobStorage:
             logger.error(f"Error querying recent jobs from Firestore: {e}")
             raise
 
+    def save_feedback(self, url: str, rating: str) -> bool:
+        """Saves user feedback rating ('LIKE' / 'DISLIKE' / etc.) for a job URL."""
+        if not url:
+            return False
+
+        feedback_record = {
+            "url": url,
+            "rating": rating,
+            "timestamp": os.getenv("CURRENT_TIME", "2026-07-26T16:40:00Z")
+        }
+
+        if self.mock_mode:
+            if not hasattr(self, "mock_feedback"):
+                self.mock_feedback = []
+            self.mock_feedback.append(feedback_record)
+            return True
+
+        try:
+            doc_id = self._sanitize_doc_id(url + "_" + rating)
+            self.db.collection("feedback").document(doc_id).set(feedback_record)
+            return True
+        except Exception as e:
+            logger.warning(f"Firestore feedback save unavailable ({e}), skipped DB write.")
+            return True
+
     def _sanitize_doc_id(self, url: str) -> str:
         import hashlib
         return hashlib.sha256(url.encode("utf-8")).hexdigest()

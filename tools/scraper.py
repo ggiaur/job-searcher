@@ -65,6 +65,8 @@ class JobScraper:
                 "https://www.profession.hu/allasok/projektmenedzsment/1,25,0,it%20vezet%C5%91,365",
                 "https://www.profession.hu/allasok/informaciobiztonsag/1,25,0,it%20vezet%C5%91,338",
                 "https://www.profession.hu/allasok/1,0,0,informatikai%20vezet%C5%91",
+                "https://nofluffjobs.com/hu/it-management",
+                "https://www.cvonline.hu/hu/allasok/it-manager"
             ]
         self.last_scraped_urls_count = len(target_urls)
 

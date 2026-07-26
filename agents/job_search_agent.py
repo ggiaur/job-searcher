@@ -87,6 +87,19 @@ class JobSearchAgent:
 
         runtime = time.time() - start_time
         scraped_urls_count = getattr(self.scraper, "last_scraped_urls_count", 5)
+
+        # Cost calculation check against MAX_DAILY_COST_USD
+        max_daily_cost = float(os.getenv("MAX_DAILY_COST_USD", "0.05"))
+        estimated_gemini_usd = found_count * 0.00015
+        estimated_firecrawl_usd = scraped_urls_count * 0.002
+        total_run_cost = estimated_gemini_usd + estimated_firecrawl_usd
+
+        if total_run_cost > max_daily_cost:
+            logger.warning(f"Cost threshold exceeded: ${total_run_cost:.4f} > ${max_daily_cost:.4f}")
+            self.notifier.send_error_notification(
+                f"💸 **Költségkeret Riasztás!** A futási költség (~${total_run_cost:.4f} USD) meghaladja a beállított maximum napi keretet (~${max_daily_cost:.4f} USD)!"
+            )
+
         self.notifier.send_summary_notification(
             found=found_count,
             relevant=relevant_count,

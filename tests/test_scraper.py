@@ -37,3 +37,11 @@ def test_scraper_max_limit():
     scraper = JobScraper(mock_mode=True)
     jobs = scraper.scrape_jobs()
     assert len(jobs) <= 100
+
+def test_nofluffjobs_scraper():
+    scraper = JobScraper(mock_mode=True)
+    os.environ["TARGET_URLS"] = "https://nofluffjobs.com/hu/it-management"
+    jobs = scraper.scrape_jobs()
+    assert jobs is not None
+    assert len(jobs) > 0
+

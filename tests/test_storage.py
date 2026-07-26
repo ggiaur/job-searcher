@@ -27,3 +27,12 @@ def test_storage_firestore_connection_error():
     # MOCK_MODE=False without valid project/creds should return False gracefully on error
     storage = JobStorage(project_id="non-existent-project-id", mock_mode=False)
     assert storage.is_duplicate("https://www.profession.hu/allas/12345") is False
+
+def test_storage_save_feedback():
+    storage = JobStorage(mock_mode=True)
+    res = storage.save_feedback("https://www.profession.hu/allas/test-feedback-123", "LIKE")
+    assert res is True
+    assert hasattr(storage, "mock_feedback")
+    assert len(storage.mock_feedback) == 1
+    assert storage.mock_feedback[0]["rating"] == "LIKE"
+

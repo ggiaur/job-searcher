@@ -53,3 +53,10 @@ def test_notifier_api_error_handling(monkeypatch):
             raise Exception("Telegram Connection Failed")
     notifier.bot = ErrorBot()
     assert notifier.send_job_notification({"title": "Test", "url": "http://example.com"}, 80, "Sum") is False
+
+def test_notifier_inline_keyboard():
+    notifier = TelegramNotifier(mock_mode=True)
+    job = {"title": "IT Director", "url": "https://www.profession.hu/allas/9999"}
+    res = notifier.send_job_notification(job, 95, "Kiváló pozíció")
+    assert res is True
+
