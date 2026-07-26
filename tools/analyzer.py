@@ -119,6 +119,25 @@ Válaszolj KIZÁRÓLAG az alábbi JSON formátumban:
                 }
             except Exception as e:
                 logger.warning(f"Gemini API call attempt {attempt + 1} failed: {e}")
-                time.sleep(15 * (attempt + 1))
+                # If Gemini API key free tier quota is hit, try fallback model
+                if "429" in str(e) or "Quota" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    try:
+                        logger.info("Attempting automatic fallback to gemini-2.0-flash for unblocked evaluation...")
+                        import google.generativeai as genai
+                        fallback_model = genai.GenerativeModel("gemini-2.0-flash")
+                        res = fallback_model.generate_content(prompt)
+                        text = res.text.strip()
+                        if "```json" in text:
+                            text = text.split("```json")[1].split("```")[0].strip()
+                        elif "```" in text:
+                            text = text.split("```")[1].split("```")[0].strip()
+                        data = json.loads(text)
+                        return {
+                            "score": int(data.get("score", 0)),
+                            "summary": str(data.get("summary", ""))
+                        }
+                    except Exception as fallback_err:
+                        logger.error(f"Fallback model also failed: {fallback_err}")
+                time.sleep(2 * (attempt + 1))
 
         return {"score": 0, "summary": "Gemini elemzési hiba."}

@@ -49,13 +49,15 @@ class JobSearchAgent:
                 logger.info(f"Skipping obvious non-IT job locally: {job.get('title')}")
                 continue
 
+            logger.info(f"Analyzing job [{job.get('title')}]: {url}")
             analysis = self.analyzer.analyze_job(job)
             if not analysis:
-                logger.warning(f"Could not analyze job: {url}")
+                logger.warning(f"Could not analyze job (API error or skipped): {url}")
                 continue
 
             score = analysis.get("score", 0)
             summary = analysis.get("summary", "")
+            logger.info(f"Job [{job.get('title')}] Score: {score}/100 - Summary: {summary[:100]}...")
 
             job_record = {
                 "url": url,

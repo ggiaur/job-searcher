@@ -46,3 +46,8 @@ Budapest és agglomeráció, remote/hibrid elfogadható
 - Junior / entry-level
 - Kizárólag szoftverfejlesztő / programozó
 - Nem IT fókuszú menedzsment
+
+## Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)
+### Preferált minták (Kiemelt relevancia):
+- [IT service desk csoportve] ok: Gombnyomás: 🤔 FONTOLÓRA VESZEM
+- [IT service desk csoportve] ok: Gombnyomás: 🤔 FONTOLÓRA VESZEM
