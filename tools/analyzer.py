@@ -139,7 +139,10 @@ Leírás: {description[:3000]}
                             }
                     except Exception as fallback_err:
                         logger.error(f"Fallback model failed: {fallback_err}")
-                time.sleep(2 * (attempt + 1))
+                import random
+                jitter = random.uniform(0.5, 1.5)
+                sleep_time = (2 ** attempt) + jitter
+                time.sleep(sleep_time)
 
         return {"score": 0, "summary": "Gemini elemzési hiba."}
 

@@ -4,11 +4,25 @@ import logging
 from typing import List, Dict, Any
 from urllib.parse import urlparse
 
+from abc import ABC, abstractmethod
+import re
+
 logger = logging.getLogger(__name__)
 
 MAX_JOBS_LIMIT = 100
 
-class JobScraper:
+PROFESSION_ALLAS_REGEX = re.compile(r'https?://(?:www\.)?profession\.hu/allas/[a-zA-Z0-9_-]+')
+
+class BaseScraper(ABC):
+    @abstractmethod
+    def scrape_jobs(self, search_queries: List[str] = None) -> List[Dict[str, Any]]:
+        pass
+
+    @abstractmethod
+    def validate_url(self, url: str) -> bool:
+        pass
+
+class JobScraper(BaseScraper):
     def __init__(self, api_key: str = None, mock_mode: bool = None):
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
         self.api_key = api_key or os.getenv("FIRECRAWL_API_KEY", "")

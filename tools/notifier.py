@@ -128,18 +128,7 @@ class TelegramNotifier:
             logger.info(f"[MOCK TELEGRAM SUMMARY]\n{summary_msg}")
             return True
 
-        if not self.bot or not self.chat_id:
-            logger.error("Telegram bot or chat_id not initialized.")
-            return False
-
-        try:
-            from telegram import Bot
-            bot = Bot(token=self.bot_token)
-            asyncio.run(bot.send_message(chat_id=self.chat_id, text=summary_msg, parse_mode="Markdown"))
-            return True
-        except Exception as e:
-            logger.error(f"Telegram API error when sending summary notification: {e}")
-            return False
+        return self._safe_send_message(summary_msg, parse_mode="Markdown")
 
     def send_error_notification(self, error_message: str) -> bool:
         """Sends an error alert via Telegram."""
@@ -147,11 +136,31 @@ class TelegramNotifier:
         if self.mock_mode:
             logger.info(f"[MOCK TELEGRAM ERROR]\n{msg}")
             return True
-        if not self.bot or not self.chat_id:
+        return self._safe_send_message(msg, parse_mode="Markdown")
+
+    def _safe_send_message(self, text: str, reply_markup=None, parse_mode: str = "HTML") -> bool:
+        """Sends a message safely checking event loops."""
+        if not self.bot_token or not self.chat_id:
+            logger.error("Telegram bot_token or chat_id not initialized.")
             return False
+
         try:
-            asyncio.run(self.bot.send_message(chat_id=self.chat_id, text=msg, parse_mode="Markdown"))
+            from telegram import Bot
+            bot = Bot(token=self.bot_token)
+            
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                # Running inside existing loop
+                import nest_asyncio
+                nest_asyncio.apply()
+                loop.run_until_complete(bot.send_message(chat_id=self.chat_id, text=text, parse_mode=parse_mode, reply_markup=reply_markup))
+            else:
+                asyncio.run(bot.send_message(chat_id=self.chat_id, text=text, parse_mode=parse_mode, reply_markup=reply_markup))
             return True
         except Exception as e:
-            logger.error(f"Telegram error notification failed: {e}")
+            logger.error(f"Telegram API error in _safe_send_message: {e}")
             return False
