@@ -29,7 +29,8 @@ class TelegramNotifier:
         msg_lines = [
             f"🎯 {title}",
             f"🏢 {company}",
-            f"📍 {location}"
+            f"📍 {location}",
+            f"📌 Forrás: {job.get('source_url', 'Profession.hu IT vezető')}",
         ]
 
         if salary:
@@ -76,7 +77,9 @@ class TelegramNotifier:
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            asyncio.run(self.bot.send_message(
+            from telegram import Bot
+            bot = Bot(token=self.bot_token)
+            asyncio.run(bot.send_message(
                 chat_id=self.chat_id,
                 text=message,
                 reply_markup=reply_markup
