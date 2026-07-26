@@ -24,7 +24,7 @@ class JobAnalyzer:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+                model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
                 try:
                     self.model = genai.GenerativeModel(model_name)
                 except Exception:
