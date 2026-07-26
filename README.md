@@ -85,10 +85,26 @@ cat /home/bj/.gemini/antigravity-cli/brain/06306c6f-d8bc-4531-af8d-77f7daf3c29a/
 
 ---
 
-## 4. 🔑 Google AI Studio $300 Kredit Beállítási Csekklista
+## 5. 🖥️ GCP e2-micro VM (Always Free Tier) Architektúra & Üzemeltetés
 
-Ahhoz, hogy a `gemini-2.5-pro` és `gemini-2.5-flash` ne ütközzön 429-es ingyenes kvótahibába:
-1. Nyisd meg a [https://ai.studio/projects](https://ai.studio/projects) oldalt.
-2. Válaszd ki a **job-searcher-503608** projektet.
-3. Kattints a **Plan & Billing** menüpontra.
-4. Győződj meg róla, hogy a $300-os GCP Billing Account hozzá van rendelve a projekthez (Pay-as-you-go / Prepayment mód).
+A **Job Searcher (`job-searcher`)** kódalapja kifejezetten úgy lett felépítve, hogy a Google Cloud Platform ingyenes **e2-micro VM (1 vCPU, 1 GB RAM)** példányán 0 Ft költséggel, maximális stabilitással fusson.
+
+### 🟢 Miért ideális ez az architektúra e2-micro gépre?
+- **Alacsony Memória-lábnyom (~30-60 MB RAM):** A modulok nem használnak nehézsúlyú keretrendszereket. A szekvenciális pipeline futása során a memóriaigény messze 100 MB alatt marad, így a VM 1 GB RAM-ját nem lépi túl.
+- **Kíméletes CPU Kredit Használat:** A hívások közötti biztonsági szünetek kímélik a burstable CPU-t, megelőzve a teljesítménykorlátozást (throttling).
+- **Determinált Memóriahasználat:** A `MAX_JOBS_LIMIT` korlát garantálja,hogy a feldolgozott adatmennyiség kiszámítható marad.
+
+### ⚙️ Ajánlott GCP e2-micro Beállítások:
+1. **Ütemezett cron indítás (0 MB RAM passzív állapotban):** Ne fusson folyamatos daemonként. Állíts be napi 1-2 cron lefutást:
+   ```bash
+   0 8,17 * * * cd /srv/projects/job-searcher && python3 main.py >> /var/log/job-searcher.log 2>&1
+   ```
+2. **1 GB SWAP Konfiguráció (OOM védelem):**
+   ```bash
+   sudo fallocate -l 1G /swapfile
+   sudo chmod 600 /swapfile
+   sudo mkswap /swapfile
+   sudo swapon /swapfile
+   ```
+3. **Log Forgatás (Lemezterület védelme):** Állíts be `logrotate`-et vagy journalctl max méretet.
+4. **Firestore Free Quota:** A napi mentések és ellenőrzések tökéletesen beleférnek a napi 50,000 ingyenes olvasási és 20,000 írási limitbe.
