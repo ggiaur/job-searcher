@@ -82,11 +82,14 @@ class JobAnalyzer:
         if time_since_last < 12.5:
             time.sleep(12.5 - time_since_last)
 
+        # Reload fresh persona (which includes recent Human-in-the-Loop learnings)
+        current_persona = _load_persona()
+
         prompt = f"""
 A megadott profil alapján értékeld az alábbi állásajánlatot!
 
 Profil és Szabályok:
-{TARGET_PERSONA_PROMPT}
+{current_persona}
 
 Álláshirdetés:
 Cím: {title}

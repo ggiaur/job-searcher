@@ -47,11 +47,11 @@ class TelegramNotifier:
         return full_msg
 
     def send_job_notification(self, job: Dict[str, Any], score: int, summary: str) -> bool:
-        """Formats and sends Telegram notification for a relevant job listing."""
+        """Formats and sends Telegram notification for a relevant job listing with Inline Action Buttons."""
         message = self.format_job_message(job, score, summary)
 
         if self.mock_mode:
-            logger.info(f"[MOCK TELEGRAM NOTIFICATION]\n{message}")
+            logger.info(f"[MOCK TELEGRAM NOTIFICATION WITH BUTTONS]\n{message}")
             return True
 
         if not self.bot or not self.chat_id:
@@ -59,7 +59,24 @@ class TelegramNotifier:
             return False
 
         try:
-            asyncio.run(self.bot.send_message(chat_id=self.chat_id, text=message))
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            keyboard = [
+                [
+                    InlineKeyboardButton("👍 Releváns", callback_data=f"like|{job.get('title', '')[:30]}"),
+                    InlineKeyboardButton("👎 Nem releváns", callback_data=f"dislike|{job.get('title', '')[:30]}"),
+                ],
+                [
+                    InlineKeyboardButton("📩 Jelentkeztem", callback_data=f"applied|{job.get('title', '')[:30]}"),
+                    InlineKeyboardButton("🔗 Megtekintés", url=job.get("url", "https://profession.hu")),
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            asyncio.run(self.bot.send_message(
+                chat_id=self.chat_id,
+                text=message,
+                reply_markup=reply_markup
+            ))
             return True
         except Exception as e:
             logger.error(f"Telegram API error when sending job notification: {e}")
