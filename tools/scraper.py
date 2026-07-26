@@ -171,7 +171,7 @@ class JobScraper(BaseScraper):
                 end_link = line.find(")", start_link)
                 if start_title < end_title and start_link < end_link:
                     title = line[start_title:end_title].strip()
-                    url = line[start_link:end_link].split()[0].replace('"', '').strip()
+                    url = line[start_link:end_link].split()[0].replace('"', '').replace('<', '').replace('>', '').strip()
                     title_lower = title.lower()
 
                     if title and title_lower not in ("megnézem az állást", "részletek", "szűrési beállításaid alapján értesítőt állítottunk be!"):

@@ -3,12 +3,14 @@ import json
 import logging
 from typing import Dict, Any, List
 
+import datetime
+
 logger = logging.getLogger(__name__)
 
 FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "..", "profile", "feedback_history.json")
 
 class FeedbackStore:
-    """Manages user feedback history and integrates human learnings back to persona.md"""
+    """Manages user feedback history and integrates human learnings back to learned_preferences.md"""
 
     def __init__(self, feedback_file: str = None):
         self.feedback_file = feedback_file or FEEDBACK_FILE
@@ -37,7 +39,7 @@ class FeedbackStore:
             "company": company,
             "action": action,
             "reason": reason,
-            "timestamp": os.popen("date -u +%Y-%m-%dT%H:%M:%SZ").read().strip()
+            "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         feedbacks.append(entry)
         with open(self.feedback_file, "w", encoding="utf-8") as f:
