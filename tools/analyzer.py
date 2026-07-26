@@ -24,11 +24,11 @@ class JobAnalyzer:
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=self.api_key)
-                model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
+                model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
                 try:
                     self.model = genai.GenerativeModel(model_name)
                 except Exception:
-                    self.model = genai.GenerativeModel('gemini-2.5-flash')
+                    self.model = genai.GenerativeModel('gemini-2.0-flash')
             except Exception as e:
                 logger.error(f"Error initializing Gemini API: {e}")
                 self.model = None
@@ -71,10 +71,16 @@ class JobAnalyzer:
                     "summary": "Alacsony relevanciájú álláshirdetés."
                 }
 
-        # Real Gemini API call with exponential retry (Paid GCP tier - max speed)
+        # Real Gemini API call with safety delay (Cost control + API protection)
         if not self.model:
             logger.error("Gemini model is not initialized.")
             return None
+
+        # Reasonable safety delay (2 seconds between calls) to prevent token spike
+        now = time.time()
+        time_since_last = now - self.last_call_time
+        if time_since_last < 2.0:
+            time.sleep(2.0 - time_since_last)
 
         # Reload fresh persona (which includes recent Human-in-the-Loop learnings)
         current_persona = _load_persona()
