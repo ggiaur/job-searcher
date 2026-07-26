@@ -62,12 +62,16 @@ class TelegramNotifier:
             from telegram import InlineKeyboardButton, InlineKeyboardMarkup
             keyboard = [
                 [
-                    InlineKeyboardButton("👍 Releváns", callback_data=f"like|{job.get('title', '')[:30]}"),
-                    InlineKeyboardButton("👎 Nem releváns", callback_data=f"dislike|{job.get('title', '')[:30]}"),
+                    InlineKeyboardButton("⭐ Kiemelt", callback_data=f"star|{job.get('title', '')[:25]}"),
+                    InlineKeyboardButton("👍 Releváns", callback_data=f"like|{job.get('title', '')[:25]}"),
+                    InlineKeyboardButton("🤔 Fontolóra veszem", callback_data=f"consider|{job.get('title', '')[:25]}"),
                 ],
                 [
-                    InlineKeyboardButton("📩 Jelentkeztem", callback_data=f"applied|{job.get('title', '')[:30]}"),
-                    InlineKeyboardButton("🔗 Megtekintés", url=job.get("url", "https://profession.hu")),
+                    InlineKeyboardButton("👎 Elutasítom", callback_data=f"dislike|{job.get('title', '')[:25]}"),
+                    InlineKeyboardButton("📩 Jelentkeztem", callback_data=f"applied|{job.get('title', '')[:25]}"),
+                ],
+                [
+                    InlineKeyboardButton("🔗 Hirdetés Megtekintése", url=job.get("url", "https://profession.hu"))
                 ]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)

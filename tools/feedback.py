@@ -29,7 +29,7 @@ class FeedbackStore:
             return []
 
     def record_feedback(self, job_url: str, job_title: str, action: str, reason: str = "") -> Dict[str, Any]:
-        """Actions: 'LIKE' (érdekel), 'DISLIKE' (nem érdekel), 'APPLIED' (jelentkeztem)"""
+        """Actions: 'STAR' (kiemelt), 'LIKE' (releváns), 'CONSIDER' (fontolóra veszem), 'DISLIKE' (elutasítom), 'APPLIED' (jelentkeztem)"""
         feedbacks = self.load_feedbacks()
         entry = {
             "job_url": job_url,
@@ -52,7 +52,7 @@ class FeedbackStore:
             return
 
         dislikes = [f for f in feedbacks if f.get("action") == "DISLIKE" and f.get("reason")]
-        likes = [f for f in feedbacks if f.get("action") in ("LIKE", "APPLIED") and f.get("reason")]
+        likes = [f for f in feedbacks if f.get("action") in ("STAR", "LIKE", "CONSIDER", "APPLIED") and f.get("reason")]
 
         persona_path = os.path.join(os.path.dirname(__file__), "..", "profile", "persona.md")
         if not os.path.exists(persona_path):
