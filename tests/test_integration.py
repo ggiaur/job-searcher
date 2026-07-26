@@ -100,5 +100,46 @@ def test_fetch_job_detail_before_analysis(monkeypatch):
     assert len(detail_called) == 1
     assert detail_called[0] == "https://www.profession.hu/allas/short-job-123"
 
+def test_circuit_breaker_detail_scraping(monkeypatch):
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+    
+    def failing_detail(url, timeout=10):
+        raise TimeoutError("Scrape timeout exceeded 10 seconds")
+
+    monkeypatch.setattr(agent.scraper, "scrape_job_detail", failing_detail)
+    monkeypatch.setattr(agent.scraper, "scrape_jobs", lambda: [
+        {"url": f"https://www.profession.hu/allas/short-{i}", "title": "IT Lead", "description": "Rövid"} for i in range(5)
+    ])
+
+    metrics = agent.run()
+    assert agent.detail_circuit_broken is True
+
+def test_feedback_pattern_recognition_yaml():
+    from tools.feedback import FeedbackStore
+    import yaml
+    
+    store = FeedbackStore(feedback_file="tests/fixtures/test_feedback.json")
+    company_name = "BadCompanyKft"
+    store.record_feedback("url1", "Title 1", "DISLIKE", "Rossz", company=company_name)
+    store.record_feedback("url2", "Title 2", "DISLIKE", "Nem szimpatikus", company=company_name)
+    
+    excl_path = os.path.join(os.path.dirname(__file__), "..", "profile", "exclusions.yaml")
+    assert os.path.exists(excl_path)
+    with open(excl_path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    assert company_name in data.get("excluded_companies", [])
+
+def test_firestore_run_log():
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+    metrics = agent.run()
+    assert hasattr(agent.storage, "mock_run_logs")
+    assert len(agent.storage.mock_run_logs) >= 1
+    log = list(agent.storage.mock_run_logs.values())[-1]
+    assert log["status"] == "completed"
+    assert "found" in log
+
+
 
 

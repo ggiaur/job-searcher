@@ -20,10 +20,11 @@ def test_feedback_store_record_and_sync(tmp_path):
     assert entry["action"] == "DISLIKE"
     assert len(store.load_feedbacks()) == 1
 
-    # Check persona.md updated
-    persona_path = os.path.join(os.path.dirname(__file__), "..", "profile", "persona.md")
-    with open(persona_path, "r", encoding="utf-8") as f:
+    # Check learned_preferences.md updated
+    pref_path = os.path.join(os.path.dirname(__file__), "..", "profile", "learned_preferences.md")
+    with open(pref_path, "r", encoding="utf-8") as f:
         content = f.read()
     
     assert "Tanult Emberi Preferenciák" in content
     assert "Junior IT Support" in content
+

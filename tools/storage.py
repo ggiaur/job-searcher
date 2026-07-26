@@ -27,6 +27,57 @@ class JobStorage:
                 logger.error(f"Firestore connection failed: {e}")
                 raise RuntimeError(f"Firestore connection failed: {e}")
 
+    def create_run_log(self, run_id: str) -> bool:
+        """Creates a new run_log document in Firestore with status 'running'."""
+        if not run_id:
+            return False
+
+        log_data = {
+            "run_id": run_id,
+            "start_time": os.popen("date -u +%Y-%m-%dT%H:%M:%SZ").read().strip(),
+            "status": "running"
+        }
+
+        if self.mock_mode:
+            if not hasattr(self, "mock_run_logs"):
+                self.mock_run_logs = {}
+            self.mock_run_logs[run_id] = log_data
+            return True
+
+        try:
+            self.db.collection("run_log").document(run_id).set(log_data)
+            return True
+        except Exception as e:
+            logger.warning(f"Firestore create_run_log unavailable ({e}), skipped.")
+            return True
+
+    def update_run_log(self, run_id: str, status: str, metrics: Dict[str, Any]) -> bool:
+        """Updates run_log document status, end_time, found, relevant, duplicate, sent, errors."""
+        if not run_id:
+            return False
+
+        update_data = {
+            "status": status,
+            "end_time": os.popen("date -u +%Y-%m-%dT%H:%M:%SZ").read().strip(),
+            "found": metrics.get("found", 0),
+            "relevant": metrics.get("relevant", 0),
+            "duplicate": metrics.get("duplicate", 0),
+            "sent": metrics.get("sent", 0),
+            "errors": metrics.get("errors", 0)
+        }
+
+        if self.mock_mode:
+            if hasattr(self, "mock_run_logs") and run_id in self.mock_run_logs:
+                self.mock_run_logs[run_id].update(update_data)
+            return True
+
+        try:
+            self.db.collection("run_log").document(run_id).update(update_data)
+            return True
+        except Exception as e:
+            logger.warning(f"Firestore update_run_log unavailable ({e}), skipped.")
+            return True
+
     def is_duplicate(self, url: str) -> bool:
         """Checks if URL has already been processed and saved."""
         if not url:

@@ -12,11 +12,20 @@ class JobEvaluationSchema(BaseModel):
     summary: str = Field(description="2-3 mondatos magyar nyelvű összefoglaló, hogy miért releváns vagy miért nem")
 
 def _load_persona() -> str:
-    persona_path = os.path.join(
-        os.path.dirname(__file__), "..", "profile", "persona.md"
-    )
-    with open(persona_path, "r", encoding="utf-8") as f:
-        return f.read()
+    profile_dir = os.path.join(os.path.dirname(__file__), "..", "profile")
+    persona_path = os.path.join(profile_dir, "persona.md")
+    pref_path = os.path.join(profile_dir, "learned_preferences.md")
+    
+    content = ""
+    if os.path.exists(persona_path):
+        with open(persona_path, "r", encoding="utf-8") as f:
+            content += f.read()
+    
+    if os.path.exists(pref_path):
+        with open(pref_path, "r", encoding="utf-8") as f:
+            content += "\n\n" + f.read()
+            
+    return content
 
 TARGET_PERSONA_PROMPT = _load_persona()
 
@@ -39,8 +48,40 @@ class JobAnalyzer:
     def analyze_job(self, job: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Analyzes job listing relevance (0-100 score) and generates a 2-3 sentence summary using official google.genai SDK."""
         title = job.get("title", "")
+        company = job.get("company", "").strip()
         description = job.get("description", "")
         full_text = f"{title} {description}".lower()
+
+        # Check YAML company exclusions (0 score) & preferences (+10 bonus)
+        import yaml
+        profile_dir = os.path.join(os.path.dirname(__file__), "..", "profile")
+        excl_path = os.path.join(profile_dir, "exclusions.yaml")
+        pref_path = os.path.join(profile_dir, "preferred_companies.yaml")
+
+        excluded_companies = []
+        if os.path.exists(excl_path):
+            try:
+                with open(excl_path, "r", encoding="utf-8") as f:
+                    excl_data = yaml.safe_load(f) or {}
+                    excluded_companies = excl_data.get("excluded_companies", [])
+            except Exception:
+                pass
+
+        if company and company in excluded_companies:
+            logger.info(f"Company '{company}' is in exclusions.yaml -> 0 score assigned.")
+            return {
+                "score": 0,
+                "summary": f"Ez a cég ({company}) szerepel a kizárt cégek (exclusions.yaml) listáján."
+            }
+
+        preferred_companies = []
+        if os.path.exists(pref_path):
+            try:
+                with open(pref_path, "r", encoding="utf-8") as f:
+                    pref_data = yaml.safe_load(f) or {}
+                    preferred_companies = pref_data.get("preferred_companies", [])
+            except Exception:
+                pass
 
         if self.mock_mode:
             # Deterministic mock scoring logic based on target persona profile rules
@@ -113,8 +154,12 @@ Leírás: {description[:3000]}
                 data = self._parse_json_response(text_content)
                 if not data or "score" not in data:
                     return {"score": 0, "summary": "Gemini elemzési hiba."}
+                score = int(data.get("score", 0))
+                if company and company in preferred_companies:
+                    score = min(100, score + 10)
+                    logger.info(f"Added +10 bonus for preferred company '{company}' -> new score: {score}")
                 return {
-                    "score": int(data.get("score", 0)),
+                    "score": score,
                     "summary": str(data.get("summary", ""))
                 }
             except Exception as e:

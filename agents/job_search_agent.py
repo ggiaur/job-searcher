@@ -24,7 +24,10 @@ class JobSearchAgent:
 
     def run(self) -> Dict[str, Any]:
         start_time = time.time()
-        logger.info("Starting JobSearchAgent pipeline execution...")
+        import uuid
+        run_id = "run_" + str(uuid.uuid4())[:8]
+        logger.info(f"Starting JobSearchAgent pipeline execution (run_id: {run_id})...")
+        self.storage.create_run_log(run_id)
 
         listings = self.scraper.scrape_jobs()
         found_count = len(listings)
@@ -49,22 +52,34 @@ class JobSearchAgent:
                 logger.info(f"Skipping obvious non-IT job locally: {job.get('title')}")
                 continue
 
-            # Enrich short descriptions with full detail page markdown
+            # Enrich short descriptions with full detail page markdown using Circuit Breaker
             description = job.get("description", "")
             if len(description) < 200:
-                logger.info(f"Description short ({len(description)} chars), fetching detail for: {url}")
-                try:
-                    detail = self.scraper.scrape_job_detail(url)
-                    if detail and isinstance(detail, dict) and not detail.get("error"):
-                        job["description"] = detail.get("description") or detail.get("markdown") or description
-                        if detail.get("company"):
-                            job["company"] = detail.get("company")
-                        if detail.get("location"):
-                            job["location"] = detail.get("location")
-                        if detail.get("salary"):
-                            job["salary"] = detail.get("salary")
-                except Exception as detail_err:
-                    logger.warning(f"Failed to fetch job detail for {url}: {detail_err}")
+                if getattr(self, "detail_circuit_broken", False):
+                    logger.warning(f"Circuit Breaker ACTIVE: skipping detail scrape for {url}")
+                else:
+                    logger.info(f"Description short ({len(description)} chars), fetching detail for: {url}")
+                    try:
+                        detail = self.scraper.scrape_job_detail(url, timeout=10)
+                        if detail and isinstance(detail, dict) and not detail.get("error"):
+                            self.consecutive_detail_failures = 0
+                            job["description"] = detail.get("description") or detail.get("markdown") or description
+                            if detail.get("company"):
+                                job["company"] = detail.get("company")
+                            if detail.get("location"):
+                                job["location"] = detail.get("location")
+                            if detail.get("salary"):
+                                job["salary"] = detail.get("salary")
+                        else:
+                            self.consecutive_detail_failures = getattr(self, "consecutive_detail_failures", 0) + 1
+                            logger.warning(f"Detail scrape failed or empty ({self.consecutive_detail_failures}/3): {url}")
+                    except Exception as detail_err:
+                        self.consecutive_detail_failures = getattr(self, "consecutive_detail_failures", 0) + 1
+                        logger.warning(f"Detail scrape timeout/error ({self.consecutive_detail_failures}/3) for {url}: {detail_err}")
+
+                    if getattr(self, "consecutive_detail_failures", 0) >= 3:
+                        self.detail_circuit_broken = True
+                        logger.warning("Circuit Breaker TRIGGERED: Max 3 consecutive detail failures reached. Disabling detail scraping for this run.")
 
             logger.info(f"Analyzing job [{job.get('title')}]: {url}")
             analysis = self.analyzer.analyze_job(job)
@@ -131,7 +146,9 @@ class JobSearchAgent:
             "relevant": relevant_count,
             "duplicate": duplicate_count,
             "sent": sent_count,
+            "errors": 0,
             "runtime": runtime
         }
+        self.storage.update_run_log(run_id, "completed", summary_metrics)
         logger.info(f"Pipeline Summary: {summary_metrics}")
         return summary_metrics

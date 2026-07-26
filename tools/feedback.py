@@ -28,12 +28,13 @@ class FeedbackStore:
             logger.error(f"Error loading feedback history: {e}")
             return []
 
-    def record_feedback(self, job_url: str, job_title: str, action: str, reason: str = "") -> Dict[str, Any]:
+    def record_feedback(self, job_url: str, job_title: str, action: str, reason: str = "", company: str = "") -> Dict[str, Any]:
         """Actions: 'STAR' (kiemelt), 'LIKE' (releváns), 'CONSIDER' (fontolóra veszem), 'DISLIKE' (elutasítom), 'APPLIED' (jelentkeztem)"""
         feedbacks = self.load_feedbacks()
         entry = {
             "job_url": job_url,
             "job_title": job_title,
+            "company": company,
             "action": action,
             "reason": reason,
             "timestamp": os.popen("date -u +%Y-%m-%dT%H:%M:%SZ").read().strip()
@@ -42,11 +43,12 @@ class FeedbackStore:
         with open(self.feedback_file, "w", encoding="utf-8") as f:
             json.dump(feedbacks, f, ensure_ascii=False, indent=2)
 
-        self._sync_feedback_to_persona()
+        self._sync_feedback_to_learned_preferences()
+        self._check_company_patterns(feedbacks)
         return entry
 
-    def _sync_feedback_to_persona(self):
-        """Appends recent negative & positive human feedback rules to profile/persona.md to update AI memory."""
+    def _sync_feedback_to_learned_preferences(self):
+        """Appends recent negative & positive human feedback rules to profile/learned_preferences.md."""
         feedbacks = self.load_feedbacks()
         if not feedbacks:
             return
@@ -54,32 +56,72 @@ class FeedbackStore:
         dislikes = [f for f in feedbacks if f.get("action") == "DISLIKE" and f.get("reason")]
         likes = [f for f in feedbacks if f.get("action") in ("STAR", "LIKE", "CONSIDER", "APPLIED") and f.get("reason")]
 
-        persona_path = os.path.join(os.path.dirname(__file__), "..", "profile", "persona.md")
-        if not os.path.exists(persona_path):
-            return
-
-        with open(persona_path, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        # Add section if not exists
-        if "## Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)" not in content:
-            content += "\n\n## Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)\n"
-
-        # Update feedback section
-        base_content = content.split("## Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)")[0].strip()
+        pref_path = os.path.join(os.path.dirname(__file__), "..", "profile", "learned_preferences.md")
+        content = "# Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)\n\n"
         
-        feedback_section = "\n\n## Tanult Emberi Preferenciák (Human-in-the-Loop Feedback)\n"
         if dislikes:
-            feedback_section += "### Elutasított minták (Pontszám csökkentő / Kizáró tényezők):\n"
+            content += "## Elutasított minták (Pontszám csökkentő / Kizáró tényezők):\n"
             for d in dislikes[-10:]:
-                feedback_section += f"- [{d['job_title']}] ok: {d['reason']}\n"
+                content += f"- [{d['job_title']}] ok: {d['reason']}\n"
 
         if likes:
-            feedback_section += "### Preferált minták (Kiemelt relevancia):\n"
+            content += "\n## Preferált minták (Kiemelt relevancia):\n"
             for l in likes[-10:]:
-                feedback_section += f"- [{l['job_title']}] ok: {l['reason']}\n"
+                content += f"- [{l['job_title']}] ok: {l['reason']}\n"
 
-        new_content = base_content + feedback_section
-        with open(persona_path, "w", encoding="utf-8") as f:
-            f.write(new_content)
-        logger.info("Synced Human-in-the-Loop feedback rules into profile/persona.md")
+        with open(pref_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        logger.info("Synced Human-in-the-Loop feedback rules into profile/learned_preferences.md")
+
+    def _check_company_patterns(self, feedbacks: List[Dict[str, Any]]):
+        """Identifies 2x dislike / 2x like company patterns and updates exclusions.yaml / preferred_companies.yaml."""
+        import yaml
+        
+        company_dislikes = {}
+        company_likes = {}
+        
+        for f in feedbacks:
+            company = f.get("company", "").strip()
+            if not company:
+                continue
+            action = f.get("action")
+            if action == "DISLIKE":
+                company_dislikes[company] = company_dislikes.get(company, 0) + 1
+            elif action in ("STAR", "LIKE"):
+                company_likes[company] = company_likes.get(company, 0) + 1
+
+        # 2x DISLIKE -> exclusions.yaml
+        excl_path = os.path.join(os.path.dirname(__file__), "..", "profile", "exclusions.yaml")
+        excl_data = {"excluded_companies": []}
+        if os.path.exists(excl_path):
+            try:
+                with open(excl_path, "r", encoding="utf-8") as f:
+                    excl_data = yaml.safe_load(f) or {"excluded_companies": []}
+            except Exception:
+                pass
+        
+        for comp, count in company_dislikes.items():
+            if count >= 2 and comp not in excl_data.get("excluded_companies", []):
+                excl_data.setdefault("excluded_companies", []).append(comp)
+                logger.info(f"Company '{comp}' added to exclusions.yaml due to 2x DISLIKE")
+
+        with open(excl_path, "w", encoding="utf-8") as f:
+            yaml.dump(excl_data, f, allow_unicode=True)
+
+        # 2x STAR/LIKE -> preferred_companies.yaml
+        pref_path = os.path.join(os.path.dirname(__file__), "..", "profile", "preferred_companies.yaml")
+        pref_data = {"preferred_companies": []}
+        if os.path.exists(pref_path):
+            try:
+                with open(pref_path, "r", encoding="utf-8") as f:
+                    pref_data = yaml.safe_load(f) or {"preferred_companies": []}
+            except Exception:
+                pass
+
+        for comp, count in company_likes.items():
+            if count >= 2 and comp not in pref_data.get("preferred_companies", []):
+                pref_data.setdefault("preferred_companies", []).append(comp)
+                logger.info(f"Company '{comp}' added to preferred_companies.yaml due to 2x LIKE")
+
+        with open(pref_path, "w", encoding="utf-8") as f:
+            yaml.dump(pref_data, f, allow_unicode=True)
