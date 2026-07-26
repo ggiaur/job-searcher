@@ -1,6 +1,6 @@
-# 🛠️ Job Hunter Architecture Sitemap & Diagnostic Guide
+# 🛠️ Job Searcher Architecture Sitemap & Diagnostic Guide
 
-Ez a dokumentum lépésről lépésre bemutatja a rendszer pontos felépítését, az ellenőrzési pontokat és a hibadiagnosztikai parancsokat.
+Ez a dokumentum lépésről lépésre bemutatja a **Job Searcher (`job-searcher`)** rendszer pontos felépítését, az ellenőrzési pontokat és a hibadiagnosztikai parancsokat.
 
 ---
 
