@@ -99,9 +99,9 @@ A **Job Searcher (`job-searcher`)** kódalapja kifejezetten úgy lett felépítv
    ```bash
    0 8,17 * * * cd /srv/projects/job-searcher && python3 main.py >> /var/log/job-searcher.log 2>&1
    ```
-2. **1 GB SWAP Konfiguráció (OOM védelem):**
+2. **4 GB SWAP Konfiguráció (Maximális OOM és Stabilitási Védelem):**
    ```bash
-   sudo fallocate -l 1G /swapfile
+   sudo fallocate -l 4G /swapfile
    sudo chmod 600 /swapfile
    sudo mkswap /swapfile
    sudo swapon /swapfile
