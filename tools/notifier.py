@@ -91,14 +91,24 @@ class TelegramNotifier:
 
     def send_summary_notification(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float, scraped_urls: int = 5) -> bool:
         """Sends run summary notification."""
+        # Cost calculation estimations:
+        # Firecrawl: ~5 URL scrapes = $0.01 (or free tier quota)
+        # Gemini 2.5 Flash: ~$0.000075 / 1k input tokens (average ~1500 tokens / job) -> ~$0.0001 / job
+        estimated_gemini_usd = found * 0.00015
+        estimated_firecrawl_usd = scraped_urls * 0.002
+        total_usd = estimated_gemini_usd + estimated_firecrawl_usd
+        total_huf = total_usd * 365
+
         summary_msg = (
-            f"📊 **Futási Összefoglaló**\n"
+            f"📊 **Futási Összefoglaló & Költségek**\n"
             f"• Scraped URL-ek száma: {scraped_urls}\n"
             f"• Talált hirdetések összesen: {found}\n"
             f"• Duplikátumok: {duplicate}\n"
             f"• Releváns (60+ pont): {relevant}\n"
             f"• Elküldött értesítések: {sent}\n"
-            f"• Futási idő: {runtime:.2f} mp"
+            f"• Futási idő: {runtime:.2f} mp\n"
+            f"💵 **Becsült futási költség:** ~${total_usd:.4f} USD (~{total_huf:.2f} Ft)\n"
+            f"   _(Gemini AI: ${estimated_gemini_usd:.4f} | Firecrawl Scrape: ${estimated_firecrawl_usd:.4f})_"
         )
 
         if self.mock_mode:
