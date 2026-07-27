@@ -180,8 +180,18 @@ class JobScraper(BaseScraper):
                             url = domain + url
                         
                         is_irrelevant = any(kw in title_lower for kw in irrelevant_keywords)
+                        has_override = any(okw in title_lower for okw in ["it", "vezető", "vezeto", "manager", "igazgató", "igazgato", "cio", "head of"])
+                        if is_irrelevant and has_override:
+                            is_irrelevant = False
 
-                        if not is_irrelevant and "profession.hu/allas/" in url and url not in [i["url"] for i in items]:
+                        valid_domains = ("profession.hu/allas/", "cvonline.hu/allas/", "cvonline.hu/job/", "nofluffjobs.com/hu/job/", "nofluffjobs.com/job/")
+                        is_valid_url = any(dom in url for dom in valid_domains)
+                        if not is_valid_url and self.validate_url(url):
+                            # Ensure it's not a category aggregation page like /allasok/ or /kategoria/
+                            if "/allasok/" not in url and "/kategoria/" not in url:
+                                is_valid_url = True
+
+                        if not is_irrelevant and is_valid_url and url not in [i["url"] for i in items]:
                             items.append({
                                 "url": url,
                                 "title": title,

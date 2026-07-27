@@ -37,7 +37,26 @@ class JobSearchAgent:
         relevant_count = 0
         sent_count = 0
 
+        # Prioritize listings by title keywords
+        priority_keywords = ["vezető", "manager", "igazgató", "cio", "head of", "osztályvezető", "projektmenedzser"]
+        high_priority = []
+        low_priority = []
+
         for job in listings:
+            t_lower = job.get("title", "").lower()
+            if any(pk in t_lower for pk in priority_keywords):
+                high_priority.append(job)
+            else:
+                low_priority.append(job)
+
+        if len(high_priority) < 20:
+            ordered_listings = high_priority + low_priority
+        else:
+            ordered_listings = high_priority + low_priority
+
+        consecutive_quota_failures = 0
+
+        for job in ordered_listings:
             url = job.get("url")
             if not url:
                 continue
@@ -84,10 +103,22 @@ class JobSearchAgent:
                         logger.warning("Circuit Breaker TRIGGERED: Max 3 consecutive detail failures reached. Disabling detail scraping for this run.")
 
             logger.info(f"Analyzing job [{job.get('title')}]: {url}")
-            analysis = self.analyzer.analyze_job(job)
+            try:
+                analysis = self.analyzer.analyze_job(job)
+            except Exception as e:
+                from tools.analyzer import GeminiQuotaExceededError
+                if isinstance(e, GeminiQuotaExceededError) or "kvóta kimerült" in str(e).lower():
+                    logger.error("Gemini API quota exceeded exception caught. Immediately stopping pipeline and sending Telegram summary.")
+                    break
+                else:
+                    logger.warning(f"Could not analyze job (API error): {url} - {e}")
+                    continue
+
             if not analysis:
                 logger.warning(f"Could not analyze job (API error or skipped): {url}")
                 continue
+            else:
+                consecutive_quota_failures = 0
 
             score = analysis.get("score", 0)
             summary = analysis.get("summary", "")

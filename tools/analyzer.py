@@ -29,6 +29,10 @@ def _load_persona() -> str:
 
 TARGET_PERSONA_PROMPT = _load_persona()
 
+class GeminiQuotaExceededError(Exception):
+    """Raised when Gemini API quota is exceeded (429 / RESOURCE_EXHAUSTED)."""
+    pass
+
 class JobAnalyzer:
     def __init__(self, api_key: str = None, mock_mode: bool = None):
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
@@ -86,36 +90,26 @@ class JobAnalyzer:
         if self.mock_mode:
             # Deterministic mock scoring logic based on target persona profile rules
             if any(term in full_text for term in ["helpdesk", "1st line", "pék", "junior", "fejlesztő", "éttermi"]):
-                if not any(term in full_text for term in ["vezető", "manager", "projektmenedzser"]):
-                    return {
-                        "score": 0,
-                        "summary": "Ez a pozíció a kizáró feltételek hatálya alá esik (helpdesk / junior / fejlesztő / nem IT)."
-                    }
-            
-            if any(term in full_text for term in ["it vezető", "infrastruktúra és üzemeltetési vezető", "cio", "digitalizációs vezető"]):
                 return {
-                    "score": 85,
-                    "summary": "Kiemelkedően releváns IT vezetői pozíció. Tartalmazza a csapatirányítási, M365/Azure és stratégiai feladatokat."
+                    "score": 15,
+                    "summary": f"A pozíció ({title}) alacsony relevanciájú, mivel nem vezetői szintre fókuszál."
                 }
-            elif "projektmenedzser" in full_text:
+            if any(term in full_text for term in ["it vezető", "it manager", "infrastruktúra vezető", "osztályvezető", "projektmenedzser", "cio"]):
+                score = 90
+                if company and company in preferred_companies:
+                    score = min(100, score + 10)
                 return {
-                    "score": 75,
-                    "summary": "Releváns projektmenedzseri pozíció."
+                    "score": score,
+                    "summary": f"A pozíció ({title}) kiemelkedően releváns a megadott vezetői profil alapján."
                 }
-            elif any(term in full_text for term in ["csoportvezető", "üzemeltetési"]):
-                return {
-                    "score": 55,
-                    "summary": "Közepesen releváns üzemeltetői pozíció, de hiányoznak a vezetői feladatok."
-                }
-            else:
-                return {
-                    "score": 20,
-                    "summary": "Alacsony relevanciájú álláshirdetés."
-                }
+            return {
+                "score": 50,
+                "summary": f"A pozíció ({title}) közepesen releváns."
+            }
 
         if not self.client:
-            logger.error("google.genai client is not initialized.")
-            return None
+            logger.error("Gemini SDK Client is not initialized.")
+            return {"score": 0, "summary": "Gemini kliens nincs inicializálva."}
 
         # Safety delay (2 seconds between calls) to prevent token spike
         now = time.time()
@@ -163,27 +157,11 @@ Leírás: {description[:3000]}
                     "summary": str(data.get("summary", ""))
                 }
             except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "Quota" in err_str or "RESOURCE_EXHAUSTED" in err_str or "prepayment credits are depleted" in err_str.lower():
+                    logger.error("Gemini API napi kvóta kimerült. Hirdetések elemzése leállítva.")
+                    raise GeminiQuotaExceededError("Gemini API napi kvóta kimerült. Hirdetések elemzése leállítva.")
                 logger.warning(f"google.genai API attempt {attempt + 1} failed: {e}")
-                if "429" in str(e) or "Quota" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                    try:
-                        logger.info("Attempting automatic fallback with gemini-2.0-flash...")
-                        from google.genai import types
-                        res = self.client.models.generate_content(
-                            model="gemini-2.0-flash",
-                            contents=prompt,
-                            config=types.GenerateContentConfig(
-                                response_mime_type="application/json",
-                                response_schema=JobEvaluationSchema,
-                            ),
-                        )
-                        data = self._parse_json_response(res.text or "")
-                        if data and "score" in data:
-                            return {
-                                "score": int(data.get("score", 0)),
-                                "summary": str(data.get("summary", ""))
-                            }
-                    except Exception as fallback_err:
-                        logger.error(f"Fallback model failed: {fallback_err}")
                 import random
                 jitter = random.uniform(0.5, 1.5)
                 sleep_time = (2 ** attempt) + jitter
