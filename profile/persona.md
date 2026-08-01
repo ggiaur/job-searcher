@@ -34,6 +34,7 @@
 2. IT osztályvezető / infrastruktúra vezető
 3. IT projektmenedzser
 4. Digitalizációs vezető / CIO
+5. AI/MI-fókuszú vezetői pozíciók: AI Lead, AI Product Manager, "vibe coding"/AI-asszisztált fejlesztést vezető szerepkör, AI transzformációs vezető, Head of AI
 
 ## Lokáció
 Budapest és agglomeráció, remote/hibrid elfogadható
@@ -43,6 +44,7 @@ Budapest és agglomeráció, remote/hibrid elfogadható
 
 ## Kizáró feltételek (0 pont)
 - Tisztán helpdesk / 1st line support
-- Junior / entry-level
-- Kizárólag szoftverfejlesztő / programozó
+- Junior / entry-level **KIVÉVE ha a pozíció maga vezetői/menedzseri jellegű** (pl. "junior IT manager", "assistant IT team lead") — ilyenkor a vezetői jelleg felülírja a junior címkét, NE zárd ki automatikusan
+- Kizárólag szoftverfejlesztő / programozó (nem vezetői beosztásban)
 - Nem IT fókuszú menedzsment
+- **Felsőfokú vagy "tárgyalásképes/anyanyelvi szintű" angol nyelvtudás kötelező előírásként** szerepel a hirdetésben (alapfokú/középfokú/"jó angoltudás" rendben van, csak a kifejezetten magas szintű elvárás kizáró ok)
