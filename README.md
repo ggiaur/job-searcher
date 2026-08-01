@@ -4,6 +4,36 @@ Ez a dokumentum lépésről lépésre bemutatja a **Job Searcher (`job-searcher`
 
 ---
 
+## 0. ⚙️ Telepítés (Első Futtatás Előtt)
+
+```bash
+# 1. Repozitórium klónozása
+git clone <repo-url> job-searcher
+cd job-searcher
+
+# 2. Virtuális környezet létrehozása és aktiválása
+python3 -m venv .venv
+source .venv/bin/activate
+
+# 3. Függőségek telepítése
+pip install -r requirements.txt
+
+# 4. Környezeti változók beállítása
+cp .env.example .env
+# ...majd töltsd ki a .env-et: GEMINI_API_KEY, FIRECRAWL_API_KEY,
+# TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GCP_PROJECT_ID
+
+# 5. Tesztek futtatása (MOCK_MODE-ban, API kulcs nélkül is működik)
+python3 -m pytest tests/ -v
+```
+
+**Fontos:** a `systemd/job-searcher.service` és a lenti cron példa is a `.venv/bin/python3`-at
+hívja, nem a rendszer Python-ját — a rendszer Python-nak nincsenek telepítve a projekt
+függőségei (firecrawl-py, google-genai, python-telegram-bot stb.), így `ExecStart=/usr/bin/python3 ...`
+azonnal `ModuleNotFoundError`-ral elszállna éles telepítés esetén.
+
+---
+
 ## 1. 🏗️ Rendszerarchitektúra és Adatáramlási Térkép
 
 ```mermaid
@@ -97,7 +127,7 @@ A **Job Searcher (`job-searcher`)** kódalapja kifejezetten úgy lett felépítv
 ### ⚙️ Ajánlott GCP e2-micro Beállítások:
 1. **Ütemezett cron indítás (0 MB RAM passzív állapotban):** Ne fusson folyamatos daemonként. Állíts be napi 1-2 cron lefutást:
    ```bash
-   0 8,17 * * * cd /srv/projects/job-searcher && python3 main.py >> /var/log/job-searcher.log 2>&1
+   0 8,17 * * * cd /srv/projects/job-searcher && .venv/bin/python3 main.py >> /var/log/job-searcher.log 2>&1
    ```
 2. **4 GB SWAP Konfiguráció (Maximális OOM és Stabilitási Védelem):**
    ```bash

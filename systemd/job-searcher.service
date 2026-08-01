@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=oneshot
 WorkingDirectory=/srv/projects/job-searcher
-ExecStart=/usr/bin/python3 /srv/projects/job-searcher/main.py
+ExecStart=/srv/projects/job-searcher/.venv/bin/python3 /srv/projects/job-searcher/main.py
 User=bj
 StandardOutput=journal
 StandardError=journal
