@@ -103,3 +103,44 @@ def test_genai_package_is_installed_and_client_api_matches():
             "tools/analyzer.py's structured-JSON response config will break."
         )
 
+
+
+def test_all_runtime_imports_are_declared_in_requirements():
+    """Regression: tools/analyzer.py and tools/feedback.py both `import yaml`,
+    but PyYAML was never listed in requirements.txt. It was present in the
+    local venv (pulled in transitively by another package), so tests passed —
+    but the production Docker image installs ONLY requirements.txt, so every
+    analyze_job() call died with "No module named 'yaml'".
+    Confirmed in real Cloud Run logs: found=99, relevant=0, sent=0.
+
+    Third requirements.txt drift bug in this project (see DECISIONS.md #4),
+    so this checks the file itself rather than just importing the module.
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    requirements = (root / "requirements.txt").read_text().lower()
+
+    module_to_distribution = {
+        "yaml": "pyyaml",
+        "firecrawl": "firecrawl-py",
+        "dotenv": "python-dotenv",
+        "telegram": "python-telegram-bot",
+        "pydantic": "pydantic",
+    }
+
+    runtime_files = list((root / "tools").glob("*.py")) + list((root / "agents").glob("*.py"))
+    imported = set()
+    for path in runtime_files:
+        for line in path.read_text().splitlines():
+            match = re.match(r"\s*(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)", line)
+            if match:
+                imported.add(match.group(1))
+
+    missing = [
+        f"{module} (needs '{dist}')"
+        for module, dist in module_to_distribution.items()
+        if module in imported and dist not in requirements
+    ]
+    assert not missing, "Imported but missing from requirements.txt: " + ", ".join(missing)
