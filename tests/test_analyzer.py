@@ -68,3 +68,37 @@ def test_analyzer_parse_json_raw_fixtures():
     res4 = analyzer._parse_json_response(corrupt_json)
     assert res4 is None
 
+def test_genai_package_is_installed_and_client_api_matches():
+    """Regression guard, same class of bug as the firecrawl one in
+    tools/scraper.py: requirements.txt used to list `google-generativeai`
+    (the old, now-deprecated package — importable as `import
+    google.generativeai`), but tools/analyzer.py was already migrated to
+    the new `google-genai` package (`from google import genai`, a
+    *different* PyPI distribution under the same `google.*` namespace).
+    A plain `pip install -r requirements.txt` therefore installed the
+    wrong package entirely, and `from google import genai` raised
+    ImportError immediately — the real (non-mock) analysis path, the
+    single most important feature of this tool, could not even import.
+    No mock-mode test could ever catch this since mock mode never touches
+    this import. Checks the actual package requirements.txt now declares
+    is importable and its Client exposes the specific API surface
+    analyzer.py calls (`Client(api_key=...)`,
+    `.models.generate_content(model=, contents=, config=)`,
+    `types.GenerateContentConfig(response_mime_type=, response_schema=)`).
+    """
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(api_key="test-key-not-a-real-credential")
+    assert hasattr(client, "models") and hasattr(client.models, "generate_content"), (
+        "google.genai.Client has no models.generate_content — the SDK's API changed; "
+        "tools/analyzer.py's real (non-mock) analysis is broken."
+    )
+
+    config_fields = types.GenerateContentConfig.model_fields
+    for field in ("response_mime_type", "response_schema"):
+        assert field in config_fields, (
+            f"types.GenerateContentConfig no longer has a '{field}' field — "
+            "tools/analyzer.py's structured-JSON response config will break."
+        )
+
