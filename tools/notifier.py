@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 class TelegramNotifier:
     def __init__(self, bot_token: str = None, chat_id: str = None, mock_mode: bool = None):
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
-        self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
-        self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID", "")
+        self.bot_token = (bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")).strip()
+        self.chat_id = (chat_id or os.getenv("TELEGRAM_CHAT_ID", "")).strip()
         self.bot = None
 
         if not self.mock_mode and self.bot_token:

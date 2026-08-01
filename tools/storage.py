@@ -14,7 +14,7 @@ def _utc_now_iso() -> str:
 class JobStorage:
     def __init__(self, project_id: str = None, mock_mode: bool = None):
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
-        self.project_id = project_id or os.getenv("GCP_PROJECT_ID", "mock-project")
+        self.project_id = (project_id or os.getenv("GCP_PROJECT_ID", "mock-project")).strip()
         self.db = None
         self.mock_data: list[str] = []
 

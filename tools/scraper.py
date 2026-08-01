@@ -24,7 +24,7 @@ class BaseScraper(ABC):
 class JobScraper(BaseScraper):
     def __init__(self, api_key: str = None, mock_mode: bool = None):
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
-        self.api_key = api_key or os.getenv("FIRECRAWL_API_KEY", "")
+        self.api_key = (api_key or os.getenv("FIRECRAWL_API_KEY", "")).strip()
         self.client = None
         if not self.mock_mode and self.api_key:
             try:

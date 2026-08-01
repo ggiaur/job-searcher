@@ -106,3 +106,26 @@ def test_firecrawl_client_uses_the_real_v1_compatible_scrape_url():
     )
 
 
+
+
+def test_env_secrets_are_stripped_of_whitespace(monkeypatch):
+    """Regression: Secret Manager values entered via Windows cmd (Ctrl+Z) carry a
+    trailing \\r\\n. That made the Firecrawl Authorization header and the Telegram
+    API URL invalid, so every scrape and every notification silently failed in
+    production (Cloud Run run_dbe07a7e: 7/7 URLs errored, 0 listings, 0 messages
+    sent). Every secret read from the environment must be whitespace-stripped."""
+    from tools.analyzer import JobAnalyzer
+    from tools.notifier import TelegramNotifier
+    from tools.scraper import JobScraper
+
+    monkeypatch.setenv("FIRECRAWL_API_KEY", "fc-testkey123\r\n")
+    monkeypatch.setenv("GEMINI_API_KEY", "gem-testkey456\r\n")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:ABCtoken\r\n")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", " 987654321 \n")
+
+    assert JobScraper(mock_mode=True).api_key == "fc-testkey123"
+    assert JobAnalyzer(mock_mode=True).api_key == "gem-testkey456"
+
+    notifier = TelegramNotifier(mock_mode=True)
+    assert notifier.bot_token == "123:ABCtoken"
+    assert notifier.chat_id == "987654321"

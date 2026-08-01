@@ -37,7 +37,7 @@ class GeminiQuotaExceededError(Exception):
 class JobAnalyzer:
     def __init__(self, api_key: str = None, mock_mode: bool = None):
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY", "")
+        self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
         self.last_call_time = 0.0
         self.client = None
 
