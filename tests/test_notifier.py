@@ -74,3 +74,23 @@ def test_notifier_html_escaping():
     assert "Teszt &lt;summary&gt; &amp; leírás" in msg
 
 
+
+
+def test_notifier_job_message_includes_local_timestamp():
+    """User wants a timestamp on every notification so they can tell which
+    hourly test run each message came from (asked while switching from
+    manual gcloud run jobs execute to an hourly Cloud Scheduler trigger)."""
+    import re
+
+    notifier = TelegramNotifier(mock_mode=True)
+    job = {"title": "IT vezető", "company": "Tech Corp", "location": "Budapest", "url": "https://x/1"}
+    msg = notifier.format_job_message(job, 85, "Remek pozíció.")
+    assert re.search(r"🕐 \d{4}-\d{2}-\d{2} \d{2}:\d{2}", msg), f"no timestamp line found in: {msg}"
+
+
+def test_notifier_summary_message_includes_local_timestamp():
+    import re
+
+    notifier = TelegramNotifier(mock_mode=True)
+    msg = notifier.build_summary_message(found=10, relevant=2, duplicate=1, sent=2, runtime=5.0, scraped_urls=7)
+    assert re.search(r"🕐 \d{4}-\d{2}-\d{2} \d{2}:\d{2}", msg), f"no timestamp line found in: {msg}"

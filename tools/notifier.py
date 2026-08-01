@@ -1,7 +1,11 @@
 import asyncio
 import logging
 import os
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
+
+BUDAPEST_TZ = ZoneInfo("Europe/Budapest")
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +38,7 @@ class TelegramNotifier:
         summary_escaped = escape_html(summary)
 
         msg_lines = [
+            f"🕐 {datetime.now(BUDAPEST_TZ).strftime('%Y-%m-%d %H:%M')}",
             f"🎯 {title}",
             f"🏢 {company}",
             f"📍 {location}",
@@ -96,8 +101,10 @@ class TelegramNotifier:
             logger.error(f"Telegram API error when sending job notification: {e}")
             return False
 
-    def send_summary_notification(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float, scraped_urls: int = 5) -> bool:
-        """Sends run summary notification."""
+    def build_summary_message(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float, scraped_urls: int = 5) -> str:
+        """Builds the run summary message text. Split out from send_summary_notification
+        so the message content (incl. the run timestamp) can be unit-tested without a
+        real/mocked Telegram send."""
         # Cost calculation estimations:
         # Firecrawl: ~5 URL scrapes = $0.01 (or free tier quota)
         # Gemini 2.5 Flash: ~$0.000075 / 1k input tokens (average ~1500 tokens / job) -> ~$0.0001 / job
@@ -111,8 +118,9 @@ class TelegramNotifier:
         relevant_pct = (relevant / found * 100) if found > 0 else 0.0
         filtered_pct = (filtered_out / found * 100) if found > 0 else 0.0
 
-        summary_msg = (
+        return (
             f"📊 **Futási Összefoglaló & Költségek**\n"
+            f"🕐 {datetime.now(BUDAPEST_TZ).strftime('%Y-%m-%d %H:%M')}\n"
             f"• Scraped URL-ek száma: {scraped_urls}\n"
             f"• Talált hirdetések összesen: {found}\n"
             f"• Duplikátumok: {duplicate}\n"
@@ -123,6 +131,10 @@ class TelegramNotifier:
             f"💵 **Becsült futási költség:** ~${total_usd:.4f} USD (~{total_huf:.2f} Ft)\n"
             f"   _(Gemini AI: ${estimated_gemini_usd:.4f} | Firecrawl Scrape: ${estimated_firecrawl_usd:.4f})_"
         )
+
+    def send_summary_notification(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float, scraped_urls: int = 5) -> bool:
+        """Sends run summary notification."""
+        summary_msg = self.build_summary_message(found, relevant, duplicate, sent, runtime, scraped_urls)
 
         if self.mock_mode:
             logger.info(f"[MOCK TELEGRAM SUMMARY]\n{summary_msg}")
