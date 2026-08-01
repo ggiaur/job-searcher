@@ -1,0 +1,16 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:$COMMIT_SHA'
+      - '-t'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:latest'
+      - '.'
+
+images:
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:$COMMIT_SHA'
+  - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
