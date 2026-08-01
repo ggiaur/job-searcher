@@ -1,9 +1,15 @@
 import os
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 class JobStorage:
     def __init__(self, project_id: str = None, mock_mode: bool = None):
@@ -34,7 +40,7 @@ class JobStorage:
 
         log_data = {
             "run_id": run_id,
-            "start_time": os.popen("date -u +%Y-%m-%dT%H:%M:%SZ").read().strip(),
+            "start_time": _utc_now_iso(),
             "status": "running"
         }
 
@@ -58,7 +64,7 @@ class JobStorage:
 
         update_data = {
             "status": status,
-            "end_time": os.popen("date -u +%Y-%m-%dT%H:%M:%SZ").read().strip(),
+            "end_time": _utc_now_iso(),
             "found": metrics.get("found", 0),
             "relevant": metrics.get("relevant", 0),
             "duplicate": metrics.get("duplicate", 0),
@@ -122,8 +128,8 @@ class JobStorage:
             return [{"url": url} for url in self.mock_data]
 
         try:
-            from datetime import datetime, timedelta
-            cutoff = datetime.utcnow() - timedelta(days=days)
+            from datetime import timedelta
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
             docs = self.db.collection("jobs").where("created_at", ">=", cutoff).stream()
             return [doc.to_dict() for doc in docs]
         except Exception as e:
@@ -138,7 +144,7 @@ class JobStorage:
         feedback_record = {
             "url": url,
             "rating": rating,
-            "timestamp": os.getenv("CURRENT_TIME", "2026-07-26T16:40:00Z")
+            "timestamp": _utc_now_iso()
         }
 
         if self.mock_mode:

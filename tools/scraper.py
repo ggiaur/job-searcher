@@ -29,7 +29,21 @@ class JobScraper(BaseScraper):
         self.client = None
         if not self.mock_mode and self.api_key:
             try:
-                from firecrawl import FirecrawlApp
+                # firecrawl-py >=2.0 repointed the top-level `FirecrawlApp`/
+                # `Firecrawl` export at a new v2 client. Its class only
+                # declares `.parse()` (local file parsing); `scrape_url()`
+                # is added dynamically per-instance and its own docstring
+                # calls it "a V1 compatibility alias for agent recovery.
+                # Prefer scrape()." — a narrow-purpose internal shim, not a
+                # documented stable API, with a bare `(url, **kwargs)`
+                # signature instead of the typed one this module was
+                # written against. `V1FirecrawlApp` is the package's actual
+                # supported v1-compatible class (matching `.markdown`
+                # response shape, explicit `formats=`/`timeout=` params)
+                # — use that instead of relying on the alias. Requirements.txt
+                # only pinned `>=1.0.0`, so a plain `pip install` silently
+                # pulls whatever the latest major version resolves to.
+                from firecrawl import V1FirecrawlApp as FirecrawlApp
                 self.client = FirecrawlApp(api_key=self.api_key)
             except Exception as e:
                 logger.error(f"Error initializing FirecrawlApp: {e}")
@@ -133,7 +147,12 @@ class JobScraper(BaseScraper):
             return {"url": url, "title": "Mock Job Detail", "description": "Mock description content"}
 
         try:
-            result = self.client.scrape_url(url, formats=['markdown'])
+            # `timeout` here was previously only used to reject the caller
+            # up front (see the `if timeout > 10` guard above) — the actual
+            # network call had no real time limit and could hang
+            # indefinitely. V1FirecrawlApp.scrape_url accepts a real
+            # `timeout` in milliseconds; wire the validated value through.
+            result = self.client.scrape_url(url, formats=['markdown'], timeout=timeout * 1000)
             markdown_content = ""
             if hasattr(result, 'markdown') and result.markdown:
                 markdown_content = result.markdown

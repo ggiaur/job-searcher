@@ -39,7 +39,7 @@ class FeedbackStore:
             "company": company,
             "action": action,
             "reason": reason,
-            "timestamp": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         feedbacks.append(entry)
         with open(self.feedback_file, "w", encoding="utf-8") as f:

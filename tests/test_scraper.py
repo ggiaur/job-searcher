@@ -65,4 +65,41 @@ def test_parse_cvonline_raw_snapshot():
     listings = scraper._parse_markdown_listings(raw_md, "https://www.cvonline.hu/hu/allasok/it")
     assert len(listings) >= 1
 
+def test_firecrawl_client_uses_the_real_v1_compatible_scrape_url():
+    """Regression guard: firecrawl-py's top-level `Firecrawl`/`FirecrawlApp`
+    export was repointed at a new v2 client. Its *class* only declares
+    `.parse()` (local file parsing) — `hasattr(FirecrawlApp, "scrape_url")`
+    is False. A `scrape_url` still shows up per-*instance*, but its own
+    docstring says "V1 compatibility alias for agent recovery. Prefer
+    scrape()." with a bare `(url, **kwargs)` signature — an internal,
+    narrow-purpose shim, not the documented, typed v1 API this module's
+    response parsing (`.markdown`, `.data`) was written against.
+    `requirements.txt` only pins `>=1.0.0`, so a plain install can land on
+    either shape depending on version. Mock mode never exercises
+    self.client, so no mock-mode test could ever catch a regression here.
+
+    Checks the real signature, not just method presence: the actual
+    `V1FirecrawlApp.scrape_url` declares an explicit `formats` parameter;
+    the "agent recovery" alias does not (everything funnels through
+    `**kwargs`). That's the concrete, checkable difference between "the
+    supported v1-compatible client" and "the undocumented alias".
+    """
+    import inspect
+
+    scraper = JobScraper(api_key="test-key-not-a-real-credential", mock_mode=False)
+    assert scraper.client is not None, "FirecrawlApp client failed to initialize at all"
+    assert hasattr(scraper.client, "scrape_url"), (
+        "The Firecrawl client has no scrape_url() at all — tools/scraper.py's real "
+        "(non-mock) scraping is now broken; find the current equivalent method and "
+        "update every call site."
+    )
+    sig = inspect.signature(scraper.client.scrape_url)
+    assert "formats" in sig.parameters, (
+        f"scraper.client.scrape_url has signature {sig} — no explicit 'formats' "
+        "parameter, which means this is firecrawl-py's narrow 'agent recovery' "
+        "compatibility alias, not the real v1-compatible client. "
+        "tools/scraper.py must import V1FirecrawlApp (not the top-level "
+        "FirecrawlApp/Firecrawl) to get the documented, typed scrape_url()."
+    )
+
 

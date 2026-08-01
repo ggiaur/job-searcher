@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from pydantic import BaseModel, HttpUrl, Field
 
@@ -11,7 +11,7 @@ class JobListing(BaseModel):
     description: str = Field(default="")
     relevance_score: Optional[int] = Field(default=None, ge=0, le=100)
     ai_summary: Optional[str] = Field(default=None, max_length=500)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         data = self.model_dump()

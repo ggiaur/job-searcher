@@ -49,12 +49,7 @@ class JobSearchAgent:
             else:
                 low_priority.append(job)
 
-        if len(high_priority) < 20:
-            ordered_listings = high_priority + low_priority
-        else:
-            ordered_listings = high_priority + low_priority
-
-        consecutive_quota_failures = 0
+        ordered_listings = high_priority + low_priority
 
         for job in ordered_listings:
             url = job.get("url")
@@ -117,8 +112,6 @@ class JobSearchAgent:
             if not analysis:
                 logger.warning(f"Could not analyze job (API error or skipped): {url}")
                 continue
-            else:
-                consecutive_quota_failures = 0
 
             score = analysis.get("score", 0)
             summary = analysis.get("summary", "")
