@@ -1,5 +1,5 @@
-import pytest
 from tools.scraper import JobScraper
+
 
 def test_parse_markdown_listings_standard_link():
     scraper = JobScraper(mock_mode=True)

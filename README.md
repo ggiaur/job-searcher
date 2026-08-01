@@ -25,6 +25,10 @@ cp .env.example .env
 
 # 5. Tesztek futtatása (MOCK_MODE-ban, API kulcs nélkül is működik)
 python3 -m pytest tests/ -v
+
+# 6. (Opcionális) Lint futtatása kódminőség-ellenőrzéshez
+pip install -r requirements-dev.txt
+ruff check .
 ```
 
 **Fontos:** a `systemd/job-searcher.service` és a lenti cron példa is a `.venv/bin/python3`-at

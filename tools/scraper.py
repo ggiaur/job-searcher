@@ -1,11 +1,10 @@
-import os
 import json
 import logging
-from typing import List, Dict, Any
-from urllib.parse import urlparse
-
-from abc import ABC, abstractmethod
+import os
 import re
+from abc import ABC, abstractmethod
+from typing import Any
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +14,7 @@ PROFESSION_ALLAS_REGEX = re.compile(r'https?://(?:www\.)?profession\.hu/allas/[a
 
 class BaseScraper(ABC):
     @abstractmethod
-    def scrape_jobs(self, search_queries: List[str] = None) -> List[Dict[str, Any]]:
+    def scrape_jobs(self, search_queries: list[str] = None) -> list[dict[str, Any]]:
         pass
 
     @abstractmethod
@@ -54,7 +53,7 @@ class JobScraper(BaseScraper):
         parsed = urlparse(url)
         return parsed.scheme in ("http", "https") and bool(parsed.netloc)
 
-    def scrape_jobs(self, search_queries: List[str] = None) -> List[Dict[str, Any]]:
+    def scrape_jobs(self, search_queries: list[str] = None) -> list[dict[str, Any]]:
         """Scrapes jobs from profession.hu and cvonline.hu up to MAX_JOBS_LIMIT."""
         if self.mock_mode:
             logger.info("MOCK_MODE enabled: loading mock listings from fixtures")
@@ -62,7 +61,7 @@ class JobScraper(BaseScraper):
             if not os.path.exists(fixture_path):
                 logger.error(f"Fixture file not found: {fixture_path}")
                 return []
-            with open(fixture_path, "r", encoding="utf-8") as f:
+            with open(fixture_path, encoding="utf-8") as f:
                 listings = json.load(f)
             
             valid_listings = []
@@ -127,7 +126,7 @@ class JobScraper(BaseScraper):
 
         return all_listings[:MAX_JOBS_LIMIT]
 
-    def scrape_job_detail(self, url: str, timeout: int = 10) -> Dict[str, Any]:
+    def scrape_job_detail(self, url: str, timeout: int = 10) -> dict[str, Any]:
         """Fetches full markdown of a single job page with timeout handling."""
         if timeout > 10:
             raise TimeoutError(f"Scrape timeout exceeded limit of {timeout} seconds")
@@ -139,7 +138,7 @@ class JobScraper(BaseScraper):
         if self.mock_mode:
             fixture_path = os.path.join(os.path.dirname(__file__), "..", "tests", "fixtures", "mock_listings.json")
             if os.path.exists(fixture_path):
-                with open(fixture_path, "r", encoding="utf-8") as f:
+                with open(fixture_path, encoding="utf-8") as f:
                     listings = json.load(f)
                 for item in listings:
                     if item.get("url") == url:
@@ -170,7 +169,7 @@ class JobScraper(BaseScraper):
             logger.error(f"Error scraping detail page {url}: {e}")
             return {"url": url, "error": str(e)}
 
-    def _parse_markdown_listings(self, markdown: str, base_url: str) -> List[Dict[str, Any]]:
+    def _parse_markdown_listings(self, markdown: str, base_url: str) -> list[dict[str, Any]]:
         items = []
         lines = markdown.splitlines()
 

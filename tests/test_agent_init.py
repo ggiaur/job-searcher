@@ -1,6 +1,7 @@
 import os
-import pytest
+
 from agents.job_search_agent import JobSearchAgent
+
 
 def test_agent_init_attributes():
     agent = JobSearchAgent(mock_mode=True)

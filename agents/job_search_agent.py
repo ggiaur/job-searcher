@@ -1,12 +1,12 @@
+import logging
 import os
 import time
-import logging
-from typing import Dict, Any
+from typing import Any
 
-from tools.scraper import JobScraper
 from tools.analyzer import JobAnalyzer
-from tools.storage import JobStorage
 from tools.notifier import TelegramNotifier
+from tools.scraper import JobScraper
+from tools.storage import JobStorage
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class JobSearchAgent:
         self.detail_circuit_broken = False
         self.consecutive_detail_failures = 0
 
-    def run(self) -> Dict[str, Any]:
+    def run(self) -> dict[str, Any]:
         start_time = time.time()
         import uuid
         run_id = "run_" + str(uuid.uuid4())[:8]

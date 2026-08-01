@@ -1,0 +1,18 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/F: pycodestyle errors + pyflakes (unused imports/vars, undefined names, etc.)
+# I: isort (import ordering)
+# UP: pyupgrade (modern Python 3.9+ syntax, e.g. list[str] over List[str])
+# Deliberately not enabling BLE/S/TRY: this codebase relies on broad
+# except Exception for graceful degradation (Firestore offline, mock
+# mode fallbacks) as an intentional design choice, not an oversight.
+select = ["E", "F", "I", "UP"]
+# E501 (line-too-long) is intentionally not enforced: most violations are
+# Hungarian-language log/notification strings and docstrings where manual
+# wrapping would hurt readability for no functional benefit, and no
+# auto-formatter (e.g. `ruff format`) is set up in this project to do it
+# safely. line-length above still documents the target for new code.
+ignore = ["E501"]

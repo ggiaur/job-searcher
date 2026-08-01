@@ -1,6 +1,9 @@
-import pytest
 import os
-from tools.scraper import JobScraper, MAX_JOBS_LIMIT
+
+import pytest
+
+from tools.scraper import MAX_JOBS_LIMIT, JobScraper
+
 
 def test_scraper_mock_mode():
     scraper = JobScraper(mock_mode=True)
@@ -48,7 +51,7 @@ def test_nofluffjobs_scraper():
 def test_parse_profession_raw_snapshot():
     scraper = JobScraper(mock_mode=True)
     snapshot_path = os.path.join(os.path.dirname(__file__), "fixtures", "snapshots", "profession_raw.md")
-    with open(snapshot_path, "r", encoding="utf-8") as f:
+    with open(snapshot_path, encoding="utf-8") as f:
         raw_md = f.read()
     listings = scraper._parse_markdown_listings(raw_md, "https://www.profession.hu/allasok/it")
     urls = [item["url"] for item in listings]
@@ -60,7 +63,7 @@ def test_parse_profession_raw_snapshot():
 def test_parse_cvonline_raw_snapshot():
     scraper = JobScraper(mock_mode=True)
     snapshot_path = os.path.join(os.path.dirname(__file__), "fixtures", "snapshots", "cvonline_raw.md")
-    with open(snapshot_path, "r", encoding="utf-8") as f:
+    with open(snapshot_path, encoding="utf-8") as f:
         raw_md = f.read()
     listings = scraper._parse_markdown_listings(raw_md, "https://www.cvonline.hu/hu/allasok/it")
     assert len(listings) >= 1

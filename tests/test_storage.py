@@ -1,6 +1,5 @@
-import pytest
-import os
 from tools.storage import JobStorage
+
 
 def test_storage_mock_mode_duplicate_detection():
     storage = JobStorage(mock_mode=True)

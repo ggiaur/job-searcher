@@ -1,10 +1,10 @@
-import os
-import json
 import logging
-import asyncio
+import os
+
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
+
 from tools.feedback import FeedbackStore
 
 load_dotenv()

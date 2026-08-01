@@ -1,7 +1,7 @@
-import os
-import logging
 import asyncio
-from typing import Dict, Any, Optional
+import logging
+import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class TelegramNotifier:
             except Exception as e:
                 logger.error(f"Error initializing Telegram bot: {e}")
 
-    def format_job_message(self, job: Dict[str, Any], score: int, summary: str) -> str:
+    def format_job_message(self, job: dict[str, Any], score: int, summary: str) -> str:
         # Escape HTML characters to prevent Telegram API Markdown/HTML parsing crashes
         def escape_html(text: str) -> str:
             if not text:
@@ -54,7 +54,7 @@ class TelegramNotifier:
             full_msg = full_msg[:4090] + "\n..."
         return full_msg
 
-    def send_job_notification(self, job: Dict[str, Any], score: int, summary: str) -> bool:
+    def send_job_notification(self, job: dict[str, Any], score: int, summary: str) -> bool:
         """Formats and sends Telegram notification for a relevant job listing with Inline Action Buttons."""
         message = self.format_job_message(job, score, summary)
 

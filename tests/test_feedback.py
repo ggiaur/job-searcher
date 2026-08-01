@@ -1,6 +1,7 @@
 import os
-import pytest
+
 from tools.feedback import FeedbackStore
+
 
 def test_feedback_store_record_and_sync(tmp_path):
     test_file = str(tmp_path / "feedback_test.json")
@@ -22,7 +23,7 @@ def test_feedback_store_record_and_sync(tmp_path):
 
     # Check learned_preferences.md updated
     pref_path = os.path.join(os.path.dirname(__file__), "..", "profile", "learned_preferences.md")
-    with open(pref_path, "r", encoding="utf-8") as f:
+    with open(pref_path, encoding="utf-8") as f:
         content = f.read()
     
     assert "Tanult Emberi Preferenciák" in content

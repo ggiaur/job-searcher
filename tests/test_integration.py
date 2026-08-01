@@ -1,7 +1,7 @@
+import logging
 import os
 import time
-import logging
-import pytest
+
 from agents.job_search_agent import JobSearchAgent
 from tools.scraper import JobScraper
 
@@ -43,7 +43,7 @@ def test_first_url_extraction_threshold():
 def test_decisions_md_exists():
     decisions_path = os.path.join(os.path.dirname(__file__), "..", "DECISIONS.md")
     assert os.path.exists(decisions_path)
-    with open(decisions_path, "r", encoding="utf-8") as f:
+    with open(decisions_path, encoding="utf-8") as f:
         content = f.read()
     assert len(content.strip()) > 0
 
@@ -77,7 +77,6 @@ def test_fetch_job_detail_before_analysis(monkeypatch):
     agent = JobSearchAgent(mock_mode=True)
     
     detail_called = []
-    original_detail = agent.scraper.scrape_job_detail
     def mock_scrape_detail(url, timeout=10):
         detail_called.append(url)
         return {
@@ -94,7 +93,7 @@ def test_fetch_job_detail_before_analysis(monkeypatch):
         "description": "Rövid leírás"
     }])
     
-    metrics = agent.run()
+    agent.run()
     assert len(detail_called) == 1
     assert detail_called[0] == "https://www.profession.hu/allas/short-job-123"
 
@@ -110,12 +109,13 @@ def test_circuit_breaker_detail_scraping(monkeypatch):
         {"url": f"https://www.profession.hu/allas/short-{i}", "title": "IT Lead", "description": "Rövid"} for i in range(5)
     ])
 
-    metrics = agent.run()
+    agent.run()
     assert agent.detail_circuit_broken is True
 
 def test_feedback_pattern_recognition_yaml():
-    from tools.feedback import FeedbackStore
     import yaml
+
+    from tools.feedback import FeedbackStore
     
     test_fb_file = "tests/fixtures/test_feedback.json"
     try:
@@ -126,7 +126,7 @@ def test_feedback_pattern_recognition_yaml():
         
         excl_path = os.path.join(os.path.dirname(__file__), "..", "profile", "exclusions.yaml")
         assert os.path.exists(excl_path)
-        with open(excl_path, "r", encoding="utf-8") as f:
+        with open(excl_path, encoding="utf-8") as f:
             data = yaml.safe_load(f)
         assert company_name in data.get("excluded_companies", [])
     finally:
@@ -136,7 +136,7 @@ def test_feedback_pattern_recognition_yaml():
 def test_firestore_run_log():
     os.environ["MOCK_MODE"] = "true"
     agent = JobSearchAgent(mock_mode=True)
-    metrics = agent.run()
+    agent.run()
     assert hasattr(agent.storage, "mock_run_logs")
     assert len(agent.storage.mock_run_logs) >= 1
     log = list(agent.storage.mock_run_logs.values())[-1]

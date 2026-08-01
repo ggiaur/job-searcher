@@ -1,7 +1,9 @@
-import os
-import sys
 import logging
+import sys
+
 from dotenv import load_dotenv
+
+from agents.job_search_agent import JobSearchAgent
 
 load_dotenv()
 
@@ -11,7 +13,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger("job-searcher")
 
-from agents.job_search_agent import JobSearchAgent
 
 def main():
     logger.info("Initializing Job Searcher application...")

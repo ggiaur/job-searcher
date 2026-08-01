@@ -1,8 +1,9 @@
-import os
-import time
 import json
 import logging
-from typing import Dict, Any, Optional
+import os
+import time
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -18,11 +19,11 @@ def _load_persona() -> str:
     
     content = ""
     if os.path.exists(persona_path):
-        with open(persona_path, "r", encoding="utf-8") as f:
+        with open(persona_path, encoding="utf-8") as f:
             content += f.read()
     
     if os.path.exists(pref_path):
-        with open(pref_path, "r", encoding="utf-8") as f:
+        with open(pref_path, encoding="utf-8") as f:
             content += "\n\n" + f.read()
             
     return content
@@ -49,7 +50,7 @@ class JobAnalyzer:
                 logger.error(f"Error initializing google.genai SDK Client: {e}")
                 self.client = None
 
-    def analyze_job(self, job: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def analyze_job(self, job: dict[str, Any]) -> dict[str, Any] | None:
         """Analyzes job listing relevance (0-100 score) and generates a 2-3 sentence summary using official google.genai SDK."""
         title = job.get("title", "")
         company = job.get("company", "").strip()
@@ -65,7 +66,7 @@ class JobAnalyzer:
         excluded_companies = []
         if os.path.exists(excl_path):
             try:
-                with open(excl_path, "r", encoding="utf-8") as f:
+                with open(excl_path, encoding="utf-8") as f:
                     excl_data = yaml.safe_load(f) or {}
                     excluded_companies = excl_data.get("excluded_companies", [])
             except Exception:
@@ -81,7 +82,7 @@ class JobAnalyzer:
         preferred_companies = []
         if os.path.exists(pref_path):
             try:
-                with open(pref_path, "r", encoding="utf-8") as f:
+                with open(pref_path, encoding="utf-8") as f:
                     pref_data = yaml.safe_load(f) or {}
                     preferred_companies = pref_data.get("preferred_companies", [])
             except Exception:
@@ -169,7 +170,7 @@ Leírás: {description[:3000]}
 
         return {"score": 0, "summary": "Gemini elemzési hiba."}
 
-    def _parse_json_response(self, text: str) -> Optional[Dict[str, Any]]:
+    def _parse_json_response(self, text: str) -> dict[str, Any] | None:
         """Cleans markdown blocks or extra surrounding text and parses JSON robustly."""
         if not text:
             return None

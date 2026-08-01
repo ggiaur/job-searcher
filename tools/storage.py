@@ -1,14 +1,14 @@
-import os
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Dict, Any, List
+import os
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 class JobStorage:
@@ -16,13 +16,13 @@ class JobStorage:
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
         self.project_id = project_id or os.getenv("GCP_PROJECT_ID", "mock-project")
         self.db = None
-        self.mock_data: List[str] = []
+        self.mock_data: list[str] = []
 
         if self.mock_mode:
             logger.info("MOCK_MODE enabled: loading mock Firestore state from fixtures")
             fixture_path = os.path.join(os.path.dirname(__file__), "..", "tests", "fixtures", "mock_firestore.json")
             if os.path.exists(fixture_path):
-                with open(fixture_path, "r", encoding="utf-8") as f:
+                with open(fixture_path, encoding="utf-8") as f:
                     data = json.load(f)
                     self.mock_data = data.get("saved_jobs", [])
         else:
@@ -57,7 +57,7 @@ class JobStorage:
             logger.warning(f"Firestore create_run_log unavailable ({e}), skipped.")
             return True
 
-    def update_run_log(self, run_id: str, status: str, metrics: Dict[str, Any]) -> bool:
+    def update_run_log(self, run_id: str, status: str, metrics: dict[str, Any]) -> bool:
         """Updates run_log document status, end_time, found, relevant, duplicate, sent, errors."""
         if not run_id:
             return False
@@ -100,7 +100,7 @@ class JobStorage:
             logger.warning(f"Firestore duplicate check unavailable ({e}), proceeding without DB cache.")
             return False
 
-    def save_job(self, job: Dict[str, Any]) -> bool:
+    def save_job(self, job: dict[str, Any]) -> bool:
         """Saves a job listing to Firestore or mock storage. Returns True if saved, False if duplicate."""
         url = job.get("url")
         if not url:
@@ -122,14 +122,14 @@ class JobStorage:
             logger.warning(f"Firestore save unavailable ({e}), skipped DB write.")
             return True
 
-    def get_recent_jobs(self, days: int = 30) -> List[Dict[str, Any]]:
+    def get_recent_jobs(self, days: int = 30) -> list[dict[str, Any]]:
         """Queries records from last 30 days."""
         if self.mock_mode:
             return [{"url": url} for url in self.mock_data]
 
         try:
             from datetime import timedelta
-            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            cutoff = datetime.now(UTC) - timedelta(days=days)
             docs = self.db.collection("jobs").where("created_at", ">=", cutoff).stream()
             return [doc.to_dict() for doc in docs]
         except Exception as e:

@@ -1,6 +1,5 @@
-import pytest
-import os
 from tools.notifier import TelegramNotifier
+
 
 def test_notifier_format_message_with_salary():
     notifier = TelegramNotifier(mock_mode=True)

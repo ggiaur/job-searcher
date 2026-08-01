@@ -1,5 +1,6 @@
 from tools.analyzer import JobAnalyzer, _load_persona
 
+
 def test_analyzer_load_persona():
     persona = _load_persona()
     assert persona is not None

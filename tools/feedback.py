@@ -1,9 +1,8 @@
-import os
+import datetime
 import json
 import logging
-from typing import Dict, Any, List
-
-import datetime
+import os
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -22,15 +21,15 @@ class FeedbackStore:
             with open(self.feedback_file, "w", encoding="utf-8") as f:
                 json.dump([], f, ensure_ascii=False, indent=2)
 
-    def load_feedbacks(self) -> List[Dict[str, Any]]:
+    def load_feedbacks(self) -> list[dict[str, Any]]:
         try:
-            with open(self.feedback_file, "r", encoding="utf-8") as f:
+            with open(self.feedback_file, encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
             logger.error(f"Error loading feedback history: {e}")
             return []
 
-    def record_feedback(self, job_url: str, job_title: str, action: str, reason: str = "", company: str = "") -> Dict[str, Any]:
+    def record_feedback(self, job_url: str, job_title: str, action: str, reason: str = "", company: str = "") -> dict[str, Any]:
         """Actions: 'STAR' (kiemelt), 'LIKE' (releváns), 'CONSIDER' (fontolóra veszem), 'DISLIKE' (elutasítom), 'APPLIED' (jelentkeztem)"""
         feedbacks = self.load_feedbacks()
         entry = {
@@ -39,7 +38,7 @@ class FeedbackStore:
             "company": company,
             "action": action,
             "reason": reason,
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            "timestamp": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         }
         feedbacks.append(entry)
         with open(self.feedback_file, "w", encoding="utf-8") as f:
@@ -68,14 +67,14 @@ class FeedbackStore:
 
         if likes:
             content += "\n## Preferált minták (Kiemelt relevancia):\n"
-            for l in likes[-10:]:
-                content += f"- [{l['job_title']}] ok: {l['reason']}\n"
+            for like in likes[-10:]:
+                content += f"- [{like['job_title']}] ok: {like['reason']}\n"
 
         with open(pref_path, "w", encoding="utf-8") as f:
             f.write(content)
         logger.info("Synced Human-in-the-Loop feedback rules into profile/learned_preferences.md")
 
-    def _check_company_patterns(self, feedbacks: List[Dict[str, Any]]):
+    def _check_company_patterns(self, feedbacks: list[dict[str, Any]]):
         """Identifies 2x dislike / 2x like company patterns and updates exclusions.yaml / preferred_companies.yaml."""
         import yaml
         
@@ -97,7 +96,7 @@ class FeedbackStore:
         excl_data = {"excluded_companies": []}
         if os.path.exists(excl_path):
             try:
-                with open(excl_path, "r", encoding="utf-8") as f:
+                with open(excl_path, encoding="utf-8") as f:
                     excl_data = yaml.safe_load(f) or {"excluded_companies": []}
             except Exception:
                 pass
@@ -115,7 +114,7 @@ class FeedbackStore:
         pref_data = {"preferred_companies": []}
         if os.path.exists(pref_path):
             try:
-                with open(pref_path, "r", encoding="utf-8") as f:
+                with open(pref_path, encoding="utf-8") as f:
                     pref_data = yaml.safe_load(f) or {"preferred_companies": []}
             except Exception:
                 pass
