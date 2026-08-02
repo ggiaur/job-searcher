@@ -56,3 +56,29 @@ def test_build_application_registers_all_three_handlers():
     app = bot_service.build_application(token="fake-token-for-handler-registration-only")
     handler_types = {type(h).__name__ for group in app.handlers.values() for h in group}
     assert handler_types == {"CommandHandler", "CallbackQueryHandler", "MessageHandler"}
+
+
+def test_main_strips_whitespace_from_telegram_bot_token(monkeypatch, capsys):
+    """Regression: the same CRLF-in-Secret-Manager-value bug already found
+    and fixed in tools/notifier.py, tools/scraper.py, tools/analyzer.py,
+    tools/storage.py this session (Windows cmd's --data-file=- + Ctrl+Z
+    leaves a trailing \\r\\n) was never fixed here - main() read
+    TELEGRAM_BOT_TOKEN with no .strip(). A token with a trailing \\r\\n
+    would build an Application with an invalid token and fail opaquely."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token-with-crlf\r\n")
+    monkeypatch.delenv("WEBHOOK_URL", raising=False)
+
+    captured_token = {}
+
+    def fake_build_application(token):
+        captured_token["value"] = token
+        raise SystemExit("stop before actually starting a bot connection")
+
+    monkeypatch.setattr(bot_service, "build_application", fake_build_application)
+
+    try:
+        bot_service.main()
+    except SystemExit:
+        pass
+
+    assert captured_token["value"] == "fake-token-with-crlf"
