@@ -67,8 +67,9 @@ def test_strict_structural_assertions():
 def test_zero_listings_alert(monkeypatch):
     os.environ["MOCK_MODE"] = "true"
     agent = JobSearchAgent(mock_mode=True)
-    # Force scraper to return empty list
+    # Force both scraping sources to return empty
     monkeypatch.setattr(agent.scraper, "scrape_jobs", lambda: [])
+    monkeypatch.setattr(agent.scraper, "search_jobs", lambda: [])
     metrics = agent.run()
     assert metrics["found"] == 0
 
@@ -92,7 +93,8 @@ def test_fetch_job_detail_before_analysis(monkeypatch):
         "title": "IT vezető",
         "description": "Rövid leírás"
     }])
-    
+    monkeypatch.setattr(agent.scraper, "search_jobs", lambda: [])
+
     agent.run()
     assert len(detail_called) == 1
     assert detail_called[0] == "https://www.profession.hu/allas/short-job-123"

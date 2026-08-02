@@ -126,6 +126,68 @@ class JobScraper(BaseScraper):
 
         return all_listings[:MAX_JOBS_LIMIT]
 
+    def search_jobs(self, queries: list[str] = None) -> list[dict[str, Any]]:
+        """Broadens coverage beyond the fixed profession.hu/cvonline.hu/nofluffjobs
+        listing URLs in scrape_jobs() by using Firecrawl's own web search (a
+        general search engine, not scoped to one job portal) - same
+        FIRECRAWL_API_KEY, no separate Google API credential needed.
+
+        Note: search() returns V1SearchResponse.data as a plain
+        List[Dict[str, Any]] (each item already {url, title, description,
+        markdown, ...}), unlike scrape_url()'s .markdown-attribute object -
+        so this reads dicts directly rather than reusing _parse_markdown_listings.
+        """
+        default_queries = [
+            "IT vezető állás Budapest",
+            "informatikai vezető munka Magyarország",
+            "IT osztályvezető állásajánlat",
+        ]
+        queries = queries or default_queries
+
+        if self.mock_mode:
+            logger.info("MOCK_MODE enabled: returning mock search results")
+            return [
+                {
+                    "url": "https://example.hu/allas/it-vezeto-mock",
+                    "title": "IT vezető (mock keresési találat)",
+                    "company": "",
+                    "location": "",
+                    "salary": "",
+                    "description": "Mock keresési találat teszteléshez.",
+                }
+            ]
+
+        if not self.client:
+            logger.error("Firecrawl client not initialized and MOCK_MODE is False.")
+            return []
+
+        all_results = []
+        for query in queries:
+            try:
+                response = self.client.search(query, limit=5, lang="hu", country="hu")
+                items = response.data if hasattr(response, "data") else response.get("data", [])
+                for item in items:
+                    if len(all_results) >= MAX_JOBS_LIMIT:
+                        break
+                    url = item.get("url", "")
+                    if not self.validate_url(url):
+                        continue
+                    job = {
+                        "url": url,
+                        "title": item.get("title", ""),
+                        "company": "",
+                        "location": "",
+                        "salary": "",
+                        "description": item.get("markdown") or item.get("description", ""),
+                        "source_url": "Google keresés",
+                    }
+                    if job not in all_results:
+                        all_results.append(job)
+            except Exception as e:
+                logger.error(f"Error searching for query '{query}': {e}")
+
+        return all_results[:MAX_JOBS_LIMIT]
+
     def scrape_job_detail(self, url: str, timeout: int = 10) -> dict[str, Any]:
         """Fetches full markdown of a single job page with timeout handling."""
         if timeout > 10:

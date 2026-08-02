@@ -32,6 +32,13 @@ class JobSearchAgent:
         self.storage.create_run_log(run_id)
 
         listings = self.scraper.scrape_jobs()
+        try:
+            search_listings = self.scraper.search_jobs()
+        except Exception as e:
+            logger.warning(f"search_jobs() failed, continuing with portal listings only: {e}")
+            search_listings = []
+        known_urls = {job.get("url") for job in listings}
+        listings.extend(job for job in search_listings if job.get("url") not in known_urls)
         found_count = len(listings)
         duplicate_count = 0
         relevant_count = 0

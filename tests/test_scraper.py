@@ -129,3 +129,58 @@ def test_env_secrets_are_stripped_of_whitespace(monkeypatch):
     notifier = TelegramNotifier(mock_mode=True)
     assert notifier.bot_token == "123:ABCtoken"
     assert notifier.chat_id == "987654321"
+
+
+def test_search_jobs_mock_mode_returns_listings():
+    scraper = JobScraper(mock_mode=True)
+    jobs = scraper.search_jobs(["IT vezető állás Budapest"])
+    assert isinstance(jobs, list)
+    assert len(jobs) > 0
+    for job in jobs:
+        assert "url" in job and "title" in job and "description" in job
+        assert job["url"].startswith("http://") or job["url"].startswith("https://")
+
+
+def test_search_jobs_maps_firecrawl_search_results_to_job_dicts():
+    """search() (unlike scrape_url()) returns V1SearchResponse.data as a
+    List[Dict[str, Any]] of {url, title, description, markdown} - not the
+    .markdown-attribute object shape scrape_url() uses. search_jobs() must
+    read from that dict shape, not assume the wrong one."""
+
+    class FakeSearchResponse:
+        def __init__(self, data):
+            self.data = data
+            self.success = True
+
+    class FakeClient:
+        def __init__(self):
+            self.calls = []
+
+        def search(self, query, **kwargs):
+            self.calls.append((query, kwargs))
+            return FakeSearchResponse([
+                {
+                    "url": "https://example-employer.hu/allasok/it-vezeto",
+                    "title": "IT vezető - Example Employer",
+                    "description": "Keresünk tapasztalt IT vezetőt csapatunkba.",
+                    "markdown": "# IT vezető\n\nKeresünk tapasztalt IT vezetőt csapatunkba, teljes leírással.",
+                },
+                {
+                    "url": "not a url, missing scheme",
+                    "title": "Invalid entry",
+                    "description": "Ezt ki kell szűrni.",
+                },
+            ])
+
+    scraper = JobScraper(mock_mode=False, api_key="fake-key")
+    scraper.client = FakeClient()
+
+    jobs = scraper.search_jobs(["IT vezető állás"])
+
+    assert len(scraper.client.calls) == 1
+    assert scraper.client.calls[0][0] == "IT vezető állás"
+
+    assert len(jobs) == 1, "the invalid-URL result must be filtered out by validate_url()"
+    assert jobs[0]["url"] == "https://example-employer.hu/allasok/it-vezeto"
+    assert jobs[0]["title"] == "IT vezető - Example Employer"
+    assert "tapasztalt IT vezetőt" in jobs[0]["description"]
