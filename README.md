@@ -142,3 +142,30 @@ A **Job Searcher (`job-searcher`)** kódalapja kifejezetten úgy lett felépítv
    ```
 3. **Log Forgatás (Lemezterület védelme):** Állíts be `logrotate`-et vagy journalctl max méretet.
 4. **Firestore Free Quota:** A napi mentések és ellenőrzések tökéletesen beleférnek a napi 50,000 ingyenes olvasási és 20,000 írási limitbe.
+
+> **Megjegyzés (2026-08):** a ténylegesen élesített architektúra ehelyett **Cloud Run Jobs + Cloud Scheduler** lett (nem e2-micro VM) — lásd `cloudbuild.yaml`. Ugyanazok az elvek (alacsony memória, determinisztikus futásidő) itt is érvényesek, csak a hosztolás Cloud Run Jobs-on történik, ami push-onként automatikusan újratelepül.
+
+---
+
+## 6. 🤖 Szöveges Tanítás Bot (Cloud Run Service, Webhook)
+
+A `bot_service.py` a Telegram-gombnyomások mellett **szabad szöveges tanítást** is kezel (pl. "miért nem releváns ez az állás?" válasz elmentése a tanult preferenciákba). Ez **külön, folyamatosan futó szolgáltatás**, nem a `main.py` batch pipeline része — ezért külön Dockerfile-lal (`Dockerfile.bot`) és külön Cloud Run **Service**-ként (nem Job-ként) települ.
+
+**Fontos**: Cloud Run csak a saját portjára (`$PORT`) irányított HTTP-kéréseket tud kézbesíteni — egy `run_polling()`-ot futtató folyamat soha nem kapná meg a Telegram-frissítéseket ott. A `bot_service.py` ezért automatikusan **webhook módra vált**, ha a `WEBHOOK_URL` környezeti változó be van állítva (helyi fejlesztéshez üresen hagyva `run_polling()`-ra esik vissza).
+
+### Telepítés (egyszeri):
+```bash
+# 1. Image build + push
+gcloud builds submit --tag europe-west1-docker.pkg.dev/job-searcher-503608/job-searcher/job-searcher-bot -f Dockerfile.bot .
+
+# 2. Cloud Run Service létrehozása (min-instances=0: csak bejövő üzenetnél fut, gyakorlatilag ingyenes)
+gcloud run deploy job-searcher-bot \
+  --image=europe-west1-docker.pkg.dev/job-searcher-503608/job-searcher/job-searcher-bot \
+  --region=europe-west1 --min-instances=0 --max-instances=1 --allow-unauthenticated \
+  --set-secrets=TELEGRAM_BOT_TOKEN=TELEGRAM_BOT_TOKEN:latest \
+  --set-env-vars=WEBHOOK_URL=PLACEHOLDER  # a valós URL csak a deploy UTÁN ismert, lásd 3. lépés
+
+# 3. WEBHOOK_URL frissítése a most kapott valós Service URL-re, majd újra-deploy
+gcloud run services update job-searcher-bot --region=europe-west1 \
+  --set-env-vars=WEBHOOK_URL=$(gcloud run services describe job-searcher-bot --region=europe-west1 --format='value(status.url)')
+```

@@ -62,19 +62,66 @@ async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     else:
         await update.message.reply_text("Köszönöm az üzenetet! Ha egy állást szeretnél értékelni, kattints a kártya alatti gombokra!")
 
+def build_application(token: str) -> "Application":
+    app = Application.builder().token(token).build()
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(CallbackQueryHandler(button_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+    return app
+
+
+def get_run_mode() -> dict:
+    """Cloud Run only accepts inbound HTTP on the port it assigns via $PORT
+    and routes it to a public HTTPS URL - a long-polling process
+    (run_polling(), the previous default) never receives Telegram's
+    updates there, since polling only makes OUTBOUND requests and Cloud
+    Run Jobs/Services don't keep a process alive to poll from unless
+    something is actively listening for inbound traffic. WEBHOOK_URL set
+    -> webhook mode (the only mode that actually works on Cloud Run
+    Services). Unset -> polling, for local development convenience.
+
+    Split out from main() so the mode-selection logic is unit-testable
+    without actually starting a live Telegram connection.
+    """
+    webhook_url = os.getenv("WEBHOOK_URL", "").strip()
+    if not webhook_url:
+        return {"mode": "polling"}
+
+    port = int(os.getenv("PORT", "8080"))
+    url_path = os.getenv("WEBHOOK_URL_PATH", "/telegram-webhook").strip() or "/telegram-webhook"
+    secret_token = os.getenv("WEBHOOK_SECRET_TOKEN", "").strip() or None
+    return {
+        "mode": "webhook",
+        "listen": "0.0.0.0",
+        "port": port,
+        "url_path": url_path,
+        "webhook_url": webhook_url.rstrip("/") + url_path,
+        "secret_token": secret_token,
+    }
+
+
 def main():
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         print("TELEGRAM_BOT_TOKEN missing!")
         return
 
-    app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message))
+    app = build_application(token)
+    run_config = get_run_mode()
 
-    print("🤖 Telegram Interaktív Callback Bot Elindítva...")
-    app.run_polling()
+    if run_config["mode"] == "webhook":
+        print(f"🤖 Telegram Webhook Bot Elindítva (port {run_config['port']}, {run_config['webhook_url']})...")
+        app.run_webhook(
+            listen=run_config["listen"],
+            port=run_config["port"],
+            url_path=run_config["url_path"],
+            webhook_url=run_config["webhook_url"],
+            secret_token=run_config["secret_token"],
+        )
+    else:
+        print("🤖 Telegram Interaktív Callback Bot Elindítva (polling, helyi fejlesztéshez)...")
+        app.run_polling()
+
 
 if __name__ == "__main__":
     main()

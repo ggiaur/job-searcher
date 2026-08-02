@@ -1,0 +1,22 @@
+# Separate image for the interactive Telegram feedback bot (bot_service.py)
+# — a long-running Cloud Run Service, not the batch Cloud Run Job that
+# Dockerfile/cloudbuild.yaml build (main.py, runs once per Scheduler
+# trigger and exits). Kept as its own Dockerfile rather than a CMD
+# override so the two deploy independently (job-searcher-deploy trigger
+# never touches this service).
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1
+
+# Cloud Run sets $PORT; bot_service.py's get_run_mode() reads it (default
+# 8080 matches Cloud Run's own default so this works unset too).
+EXPOSE 8080
+
+CMD ["python", "bot_service.py"]
