@@ -229,3 +229,24 @@ def test_min_call_interval_is_configurable_and_free_tier_safe(monkeypatch):
     monkeypatch.setenv("GEMINI_MIN_INTERVAL_SEC", "1.5")
     b = JobAnalyzer(mock_mode=True)
     assert b.min_call_interval == 1.5, "a szünetnek env-változóval állíthatónak kell lennie"
+
+
+def test_analyzer_default_model_uses_latest_alias_not_hardcoded_version(monkeypatch):
+    """Regression: a korábbi alapértelmezés egy konkrét verziószámú modellnév
+    volt (gemini-2.5-flash). Élesben kiderült, hogy egy vadonatúj AI Studio
+    kulcs/projekt alól ez 404-et ad ("no longer available to new users"),
+    miközben egy régebbi projektnél ugyanaz a név még működik - a hozzáférés
+    kulcsonként/projektenként változik, nem globálisan.
+
+    A "-latest" alias pont ezt a problémaosztályt oldja meg: nem kell
+    előre tudni, melyik konkrét verzió érhető el egy adott kulcsnál.
+    """
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    a = JobAnalyzer(mock_mode=False)
+
+    assert a.model_name == "gemini-flash-latest", (
+        f"az alapértelmezésnek egy -latest aliasnak kell lennie, nem hardcode-olt "
+        f"verziószámnak, kaptuk: {a.model_name}"
+    )

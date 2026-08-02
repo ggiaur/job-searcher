@@ -90,7 +90,16 @@ class JobAnalyzer:
                     logger.info(f"Gemini kliens Vertex AI módban (project={project}, location={location})")
                 else:
                     self.client = genai.Client(api_key=self.api_key)
-                self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+                # "gemini-flash-latest" egy Google-fenntartott alias, ami
+                # mindig az adott kulcshoz/projekthez aktuálisan támogatott
+                # flash modellre mutat. Korábban itt egy konkrét verziószámú
+                # név (gemini-2.5-flash) állt hardcode-olva - ez egy vadonatúj
+                # AI Studio projekt/kulcs alól 404-et adott ("no longer
+                # available to new users"), miközben ugyanaz a modellnév egy
+                # régebbi projektnél még működött. Az alias pont ezt a
+                # problémaosztályt oldja meg: nem kell tudni előre, melyik
+                # verziószám érhető el az adott kulcsnál.
+                self.model_name = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
             except Exception as e:
                 logger.error(f"Error initializing google.genai SDK Client: {e}")
                 self.client = None
