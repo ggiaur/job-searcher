@@ -216,3 +216,49 @@ def test_parse_rejects_navigation_and_footer_links_not_just_category_pages():
     assert urls == ["https://www.profession.hu/allas/it-vezeto-123456"], (
         f"only the real job-detail URL may be kept, got: {urls}"
     )
+
+
+def test_search_jobs_rejects_aggregator_listing_pages():
+    """Regression: search_jobs() (a Firecrawl web-search alapú forrás) a
+    valóságban NEM egyedi álláshirdetéseket ad vissza, hanem gyűjtő-/találati
+    oldalakat: profession.hu/allasok/..., indeed.com/q-..., careerjet,
+    jooble, linkedin.com/jobs/... — élesben mind az 5 találat ilyen volt.
+
+    Ez nem csak haszontalan: a címükben szerepel a "vezető"/"manager" szó,
+    ezért a JobSearchAgent ELSŐBBSÉGGEL, a valódi hirdetések ELŐTT dolgozza
+    fel őket. Mindegyikre elmegy egy Firecrawl részletlekérés és egy Gemini
+    hívás, felélve az ingyenes kvótát, mielőtt egyetlen igazi állás sorra
+    kerülne.
+    """
+    class FakeResponse:
+        def __init__(self, data):
+            self.data = data
+
+    class FakeClient:
+        def search(self, query, **kwargs):
+            return FakeResponse([
+                # Élesben ténylegesen visszakapott gyűjtőoldalak:
+                {"url": "https://www.profession.hu/allasok/1,0,0,it%20vezeto",
+                 "title": "It vezető állás, munka - 139 állásajánlat"},
+                {"url": "https://hu.indeed.com/q-it-vezeto-allasok.html",
+                 "title": "Több mint 100 IT Vezető állás, munka"},
+                {"url": "https://www.careerjet.hu/it-vezeto-allasok",
+                 "title": "Állások - IT Vezető - Magyarország"},
+                {"url": "https://hu.jooble.org/allas-IT-vezeto/Budapest",
+                 "title": "IT vezető állás Budapest"},
+                {"url": "https://hu.linkedin.com/jobs/it-manager-jobs",
+                 "title": "512 It Manager Állások itt: Hungary"},
+                # Egyetlen VALÓDI hirdetés-részletoldal:
+                {"url": "https://www.profession.hu/allas/it-manager-valos-ceg-123456",
+                 "title": "IT Manager - Valós Cég"},
+            ])
+
+    scraper = JobScraper(mock_mode=False, api_key="fake-key")
+    scraper.client = FakeClient()
+
+    jobs = scraper.search_jobs(["IT vezető állás"])
+    urls = [j["url"] for j in jobs]
+
+    assert urls == ["https://www.profession.hu/allas/it-manager-valos-ceg-123456"], (
+        f"csak a valódi hirdetés-részletoldal maradhat, kaptuk: {urls}"
+    )

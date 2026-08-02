@@ -28,6 +28,53 @@ JOB_DETAIL_URL_REGEX = re.compile(
     re.IGNORECASE,
 )
 
+# Ismert állásportálok / aggregátorok. Ezeken a domaineken CSAK a
+# JOB_DETAIL_URL_REGEX-re illeszkedő részletoldal számít hirdetésnek -
+# minden más a portál saját találati/kategória oldala. Egy munkáltató
+# SAJÁT karrieroldalán viszont egy konkrét pozíció-útvonal legitim
+# hirdetés, ott ezért engedékenyebb szabály él (lásd is_job_detail_url()).
+JOB_BOARD_DOMAINS = (
+    "profession.hu",
+    "cvonline.hu",
+    "nofluffjobs.com",
+    "indeed.com",
+    "careerjet.hu",
+    "jooble.org",
+    "linkedin.com",
+    "monster.hu",
+    "glassdoor.com",
+    "allasportal.hu",
+)
+
+
+def is_job_detail_url(url: str) -> bool:
+    """Egyetlen álláshirdetés RÉSZLETOLDALÁRA mutat-e az URL?
+
+    Ismert állásportálon: csak a portál hirdetés-URL mintája fogadható el.
+    Egyéb (jellemzően munkáltatói) oldalon: legyen legalább kétszintű,
+    beszédes útvonala - így a puszta kezdőlap és az egyszavas kategória
+    kiesik, egy konkrét pozíció-oldal viszont átmegy.
+    """
+    if not url:
+        return False
+
+    host = urlparse(url).netloc.lower()
+    if any(domain in host for domain in JOB_BOARD_DOMAINS):
+        return bool(JOB_DETAIL_URL_REGEX.search(url))
+
+    path = urlparse(url).path.strip("/")
+    if not path:
+        return False
+    segments = [seg for seg in path.split("/") if seg]
+    if len(segments) < 2:
+        return False
+    # Az utolsó szegmens legyen "beszédes" slug (pl. "it-vezeto"), ne egy
+    # generikus gyűjtőoldal-név.
+    last = segments[-1].lower()
+    generic = {"allasok", "allas", "jobs", "job", "karrier", "career", "careers", "vacancies"}
+    return last not in generic and len(last) >= 3
+
+
 class BaseScraper(ABC):
     @abstractmethod
     def scrape_jobs(self, search_queries: list[str] = None) -> list[dict[str, Any]]:
@@ -187,6 +234,18 @@ class JobScraper(BaseScraper):
                         break
                     url = item.get("url", "")
                     if not self.validate_url(url):
+                        continue
+                    # Az általános webkeresés a gyakorlatban NEM egyedi
+                    # hirdetéseket ad vissza, hanem gyűjtő-/találati oldalakat
+                    # (profession.hu/allasok/..., indeed /q-..., careerjet,
+                    # jooble, linkedin/jobs/...). Ezek címében ott a
+                    # "vezető"/"manager" szó, ezért az agent ELSŐBBSÉGGEL, a
+                    # valódi hirdetések ELŐTT dolgozná fel őket - mindegyikre
+                    # elmenne egy Firecrawl részletlekérés és egy Gemini hívás,
+                    # felélve a kvótát. Csak valódi hirdetés-részletoldalt
+                    # engedünk tovább.
+                    if not is_job_detail_url(url):
+                        logger.info(f"Keresési találat kiszűrve (nem hirdetés-részletoldal): {url}")
                         continue
                     job = {
                         "url": url,
