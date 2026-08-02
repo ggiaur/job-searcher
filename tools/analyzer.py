@@ -39,6 +39,24 @@ class JobAnalyzer:
         self.mock_mode = mock_mode if mock_mode is not None else (os.getenv("MOCK_MODE", "false").lower() == "true")
         self.api_key = (api_key or os.getenv("GEMINI_API_KEY", "")).strip()
         self.last_call_time = 0.0
+
+        # Minimális szünet két Gemini-hívás között, másodpercben.
+        #
+        # Történet: a d46d972 commit ("Rate limiting szünetek eltávolítva a
+        # fizetős GCP 300$ kredit kihasználásához") azzal az indokkal vette ki
+        # a fékezést, hogy a $300-as GCP keret fedezi a költséget. Ez tárgyi
+        # tévedés — a Google dokumentációja szerint az a keret az AI Studio-s
+        # Gemini API-ra NEM használható. A fék hiánya így a felhasználó előre
+        # fizetett kreditjét égette maximális sebességgel, amíg el nem fogyott.
+        #
+        # Az ingyenes szinten percenkénti kéréslimit is van, ezért az
+        # alapértelmezés 6 mp (<= 10 kérés/perc). Fizetős szinten nyugodtan
+        # csökkenthető a GEMINI_MIN_INTERVAL_SEC változóval.
+        try:
+            self.min_call_interval = float(os.getenv("GEMINI_MIN_INTERVAL_SEC", "6.0"))
+        except ValueError:
+            logger.warning("GEMINI_MIN_INTERVAL_SEC nem szám, 6.0 mp-re állítva.")
+            self.min_call_interval = 6.0
         self.client = None
 
         # Két hitelesítési út létezik, és ez NEM csak technikai részlet:
@@ -139,11 +157,12 @@ class JobAnalyzer:
             logger.error("Gemini SDK Client is not initialized.")
             return {"score": 0, "summary": "Gemini kliens nincs inicializálva."}
 
-        # Safety delay (2 seconds between calls) to prevent token spike
+        # Sebességfék: a hívások között tartsuk a beállított minimális szünetet,
+        # hogy ne fussunk a percenkénti kéréslimitbe (lásd min_call_interval).
         now = time.time()
         time_since_last = now - self.last_call_time
-        if time_since_last < 2.0:
-            time.sleep(2.0 - time_since_last)
+        if time_since_last < self.min_call_interval:
+            time.sleep(self.min_call_interval - time_since_last)
 
         current_persona = _load_persona()
 

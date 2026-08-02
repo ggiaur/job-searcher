@@ -202,3 +202,30 @@ def test_analyzer_defaults_to_ai_studio_when_vertex_not_enabled(monkeypatch):
 
     assert captured.get("api_key") == "test-key-123"
     assert not captured.get("vertexai")
+
+
+def test_min_call_interval_is_configurable_and_free_tier_safe(monkeypatch):
+    """A hívások közti minimális szünet legyen környezeti változóval állítható,
+    és az alapértelmezés legyen biztonságos az ingyenes szinthez.
+
+    Előzmény: a d46d972 commit ("Rate limiting szünetek eltávolítva a fizetős
+    GCP 300$ kredit kihasználásához") kivette a fékezést azzal az indokkal,
+    hogy a $300-as GCP keret fedezi a költséget. Ez tárgyi tévedés: a Google
+    dokumentációja szerint a keret az AI Studio-s Gemini API-ra NEM
+    használható. A fék így a felhasználó előre fizetett kreditjét égette
+    maximális sebességgel.
+
+    Az ingyenes szinten percenkénti kéréslimit van, ezért fék nélkül a futás
+    azonnal 429-be futna. A hardcode-olt érték helyett legyen állítható, hogy
+    a limit változásakor ne kelljen kódot módosítani.
+    """
+    a = JobAnalyzer(mock_mode=True)
+    # Alapértelmezés: legalább 6 mp (<= 10 kérés/perc), ami a szűkös ingyenes
+    # percenkénti limitek mellett is biztonságos.
+    assert a.min_call_interval >= 6.0, (
+        f"az alapértelmezett szünet túl rövid az ingyenes szinthez: {a.min_call_interval}"
+    )
+
+    monkeypatch.setenv("GEMINI_MIN_INTERVAL_SEC", "1.5")
+    b = JobAnalyzer(mock_mode=True)
+    assert b.min_call_interval == 1.5, "a szünetnek env-változóval állíthatónak kell lennie"
