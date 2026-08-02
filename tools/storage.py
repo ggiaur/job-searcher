@@ -129,7 +129,11 @@ class JobStorage:
 
         try:
             from datetime import timedelta
-            cutoff = datetime.now(UTC) - timedelta(days=days)
+            # created_at is stored as a plain ISO string (see
+            # agents/job_search_agent.py's job_record), not a Firestore
+            # Timestamp - the query bound must be the same type, or
+            # Firestore's inequality filter silently matches nothing.
+            cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
             docs = self.db.collection("jobs").where("created_at", ">=", cutoff).stream()
             return [doc.to_dict() for doc in docs]
         except Exception as e:
