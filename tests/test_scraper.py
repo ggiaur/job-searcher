@@ -184,3 +184,35 @@ def test_search_jobs_maps_firecrawl_search_results_to_job_dicts():
     assert jobs[0]["url"] == "https://example-employer.hu/allasok/it-vezeto"
     assert jobs[0]["title"] == "IT vezető - Example Employer"
     assert "tapasztalt IT vezetőt" in jobs[0]["description"]
+
+
+def test_parse_rejects_navigation_and_footer_links_not_just_category_pages():
+    """Regression: _parse_markdown_listings() accepted ANY http(s) link that
+    wasn't a /allasok/ or /kategoria/ aggregation page as a job listing.
+
+    On a real portal listing page that means the navigation, footer, social
+    and login links all became "job listings": they were then sent to Gemini
+    one by one for relevance analysis. On the free Gemini tier that burns the
+    daily request quota on garbage - and since the agent breaks the whole
+    pipeline on GeminiQuotaExceededError, the genuine job postings further
+    down the list never get analyzed or sent at all.
+
+    Only URLs that actually look like a job DETAIL page may pass.
+    """
+    scraper = JobScraper(mock_mode=True)
+    markdown = "\n".join([
+        "[IT vezető - Nagy Cég](https://www.profession.hu/allas/it-vezeto-123456)",
+        "[Rólunk](https://www.profession.hu/rolunk)",
+        "[Adatvédelmi tájékoztató](https://www.profession.hu/adatvedelem)",
+        "[Kapcsolat](https://www.profession.hu/kapcsolat)",
+        "[Facebook](https://www.facebook.com/professionhu)",
+        "[Céges profilok](https://www.profession.hu/cegek/valamilyen-ceg)",
+        "[Bejelentkezés](https://www.profession.hu/belepes)",
+    ])
+
+    listings = scraper._parse_markdown_listings(markdown, "https://www.profession.hu/allasok/it")
+    urls = [item["url"] for item in listings]
+
+    assert urls == ["https://www.profession.hu/allas/it-vezeto-123456"], (
+        f"only the real job-detail URL may be kept, got: {urls}"
+    )

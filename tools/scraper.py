@@ -12,6 +12,22 @@ MAX_JOBS_LIMIT = 100
 
 PROFESSION_ALLAS_REGEX = re.compile(r'https?://(?:www\.)?profession\.hu/allas/[a-zA-Z0-9_-]+')
 
+# Egy állás RÉSZLETOLDALÁNAK URL-mintái portálonként. A listaoldalak
+# markdownjából csak az ezekre illeszkedő linkek számítanak hirdetésnek -
+# minden más (navigáció, lábléc, közösségi és bejelentkezési linkek,
+# céges profiloldalak) kiszűrendő. Lásd _parse_markdown_listings().
+#
+# Új portál felvételekor ide kell bővíteni a mintát, KÜLÖNBEN 0 találat
+# jön az adott forrásból (amit a scrape_jobs() Telegram-riasztással jelez).
+JOB_DETAIL_URL_REGEX = re.compile(
+    r'https?://(?:www\.)?(?:'
+    r'profession\.hu/allas/'
+    r'|cvonline\.hu/(?:hu/)?(?:allas|job)/'
+    r'|nofluffjobs\.com/(?:hu/)?job/'
+    r')[a-zA-Z0-9_\-/]+',
+    re.IGNORECASE,
+)
+
 class BaseScraper(ABC):
     @abstractmethod
     def scrape_jobs(self, search_queries: list[str] = None) -> list[dict[str, Any]]:
@@ -264,12 +280,26 @@ class JobScraper(BaseScraper):
                         if is_irrelevant and has_override:
                             is_irrelevant = False
 
-                        valid_domains = ("profession.hu/allas/", "cvonline.hu/allas/", "cvonline.hu/job/", "nofluffjobs.com/hu/job/", "nofluffjobs.com/job/")
-                        is_valid_url = any(dom in url for dom in valid_domains)
-                        if not is_valid_url and self.validate_url(url):
-                            # Ensure it's not a category aggregation page like /allasok/ or /kategoria/
-                            if "/allasok/" not in url and "/kategoria/" not in url:
-                                is_valid_url = True
+                        # A portál-listaoldalak markdownja tele van navigációs,
+                        # lábléc-, közösségi és bejelentkezési linkekkel. Korábban
+                        # itt egy megengedő fallback állt: MINDEN http(s) link
+                        # elfogadásra került, ami nem /allasok/ vagy /kategoria/
+                        # gyűjtőoldal volt - így a "Rólunk", "Adatvédelem",
+                        # "Kapcsolat", a Facebook-link és a bejelentkezési oldal is
+                        # állásajánlatként ment tovább a Gemini-elemzésre.
+                        #
+                        # Ez nem csak zaj: az ingyenes Gemini-kvótát elégeti a
+                        # szemét linkeken, és mivel a JobSearchAgent
+                        # GeminiQuotaExceededError esetén MEGSZAKÍTJA a teljes
+                        # futást, a lista későbbi részén álló valódi hirdetések
+                        # már el sem jutnak az elemzésig.
+                        #
+                        # Ezért csak olyan URL-t fogadunk el, ami tényleg egy
+                        # állás RÉSZLETOLDALÁRA mutat. Ha egy portál megváltoztatja
+                        # az URL-szerkezetét, az 0 találatként jelentkezik - amit a
+                        # scrape_jobs() Telegram-riasztással jelez, tehát látható
+                        # hiba lesz, nem csendes minőségromlás.
+                        is_valid_url = bool(JOB_DETAIL_URL_REGEX.search(url))
 
                         if not is_irrelevant and is_valid_url and url not in [i["url"] for i in items]:
                             items.append({
