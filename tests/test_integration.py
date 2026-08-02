@@ -148,3 +148,39 @@ def test_firestore_run_log():
 
 
 
+
+
+def test_quota_exhaustion_sends_explicit_error_notification():
+    """Regression: ha a Gemini kvóta/kredit elfogy, az agent megszakítja a
+    futást és csak a szokásos összefoglalót küldi ki — ami így néz ki:
+
+        Talált hirdetések: 58 | Releváns (60+ pont): 0 | Elküldött: 0
+
+    Ez FÉLREVEZETŐ: pontosan úgy fest, mintha a rendszer megvizsgálta volna
+    az 58 hirdetést és egyik sem lett volna elég jó. A valóságban az AI el
+    sem indult. A felhasználó ebből azt a következtetést vonja le, hogy
+    "ma nincs jó állás", pedig a rendszer nem működik — és ez napokig
+    észrevétlen maradhat.
+
+    Elvárás: kvóta/kredit kimerülésekor menjen ki egy EXPLICIT hibaüzenet,
+    ami megmondja, mi a valódi baj és mit kell tenni.
+    """
+    from tools.analyzer import GeminiQuotaExceededError
+
+    agent = JobSearchAgent(mock_mode=True)
+
+    def always_quota_exceeded(job):
+        raise GeminiQuotaExceededError("Gemini API napi kvóta kimerült.")
+
+    agent.analyzer.analyze_job = always_quota_exceeded
+
+    sent_errors = []
+    agent.notifier.send_error_notification = lambda msg: sent_errors.append(msg) or True
+
+    agent.run()
+
+    assert sent_errors, "kvóta kimerülésekor explicit hibaértesítést kell küldeni"
+    joined = " ".join(sent_errors).lower()
+    assert "kvóta" in joined or "kredit" in joined, (
+        f"a hibaüzenetnek meg kell neveznie a valódi okot, kaptuk: {sent_errors}"
+    )

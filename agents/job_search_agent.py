@@ -43,6 +43,7 @@ class JobSearchAgent:
         duplicate_count = 0
         relevant_count = 0
         sent_count = 0
+        quota_exhausted = False
 
         # Prioritize listings by title keywords
         priority_keywords = ["vezető", "manager", "igazgató", "cio", "head of", "osztályvezető", "projektmenedzser"]
@@ -111,6 +112,21 @@ class JobSearchAgent:
                 from tools.analyzer import GeminiQuotaExceededError
                 if isinstance(e, GeminiQuotaExceededError) or "kvóta kimerült" in str(e).lower():
                     logger.error("Gemini API quota exceeded exception caught. Immediately stopping pipeline and sending Telegram summary.")
+                    # A puszta összefoglaló ilyenkor félrevezető: úgy néz ki,
+                    # mintha megvizsgáltuk volna a hirdetéseket és egyik sem
+                    # lett volna elég jó ("Talált: 58, Releváns: 0"), holott az
+                    # AI el sem indult. Enélkül a felhasználó azt hiszi, nincs
+                    # jó állás — miközben a rendszer napok óta nem működik.
+                    quota_exhausted = True
+                    self.notifier.send_error_notification(
+                        "🛑 **A keresés leállt: az AI-elemzés nem fut!**\n\n"
+                        "A Gemini API elutasította a kérést (kvóta vagy előre fizetett kredit "
+                        "kimerült), ezért egyetlen hirdetést sem tudtunk kiértékelni.\n\n"
+                        f"Addig feldolgozatlanul maradt: **{max(found_count - relevant_count - duplicate_count, 0)} hirdetés**.\n\n"
+                        "Teendő: nézd meg a számlázást az https://ai.studio/projects oldalon, "
+                        "vagy állíts be másik API-kulcsot. Amíg ez nincs rendezve, "
+                        "**nem fognak állásajánlatok érkezni.**"
+                    )
                     break
                 else:
                     logger.warning(f"Could not analyze job (API error): {url} - {e}")
@@ -179,9 +195,14 @@ class JobSearchAgent:
             "relevant": relevant_count,
             "duplicate": duplicate_count,
             "sent": sent_count,
-            "errors": 0,
-            "runtime": runtime
+            "errors": 1 if quota_exhausted else 0,
+            "runtime": runtime,
+            "quota_exhausted": quota_exhausted,
         }
-        self.storage.update_run_log(run_id, "completed", summary_metrics)
+        # A futás NEM "completed", ha az AI-elemzés el sem indult - különben a
+        # run_log alapján később úgy tűnne, minden rendben ment.
+        self.storage.update_run_log(
+            run_id, "failed_quota" if quota_exhausted else "completed", summary_metrics
+        )
         logger.info(f"Pipeline Summary: {summary_metrics}")
         return summary_metrics
