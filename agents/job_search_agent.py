@@ -105,6 +105,22 @@ class JobSearchAgent:
                         self.detail_circuit_broken = True
                         logger.warning("Circuit Breaker TRIGGERED: Max 3 consecutive detail failures reached. Disabling detail scraping for this run.")
 
+            # Determinisztikus nyelvi előszűrés a Gemini-hívás ELŐTT.
+            #
+            # A persona.md szövegesen már leírta ezt a szabályt ("felsőfokú/
+            # tárgyalóképes/anyanyelvi angol = kizáró ok"), élesben mégis
+            # többször átment ilyen hirdetés - egy csak-promptban élő szabály
+            # nem garancia, mert az LLM ítélete hirdetésenként ingadozhat.
+            # Ez a kódszintű ellenőrzés mindig ugyanúgy fut le, és Gemini-
+            # kvótát sem fogyaszt a biztosan kizárandó eseteken.
+            from tools.language_filter import language_requirement_label, should_exclude_for_language
+            job["language_requirement"] = language_requirement_label(
+                job.get("title", ""), job.get("description", "")
+            )
+            if should_exclude_for_language(job.get("title", ""), job.get("description", "")):
+                logger.info(f"Skipping due to high-level English requirement: {job.get('title')} - {job['language_requirement']}")
+                continue
+
             logger.info(f"Analyzing job [{job.get('title')}]: {url}")
             try:
                 analysis = self.analyzer.analyze_job(job)
@@ -149,6 +165,7 @@ class JobSearchAgent:
                 "description": job.get("description", ""),
                 "relevance_score": score,
                 "ai_summary": summary,
+                "language_requirement": job.get("language_requirement", ""),
                 "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
             }
 

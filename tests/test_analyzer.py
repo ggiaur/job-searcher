@@ -250,3 +250,40 @@ def test_analyzer_default_model_uses_latest_alias_not_hardcoded_version(monkeypa
         f"az alapértelmezésnek egy -latest aliasnak kell lennie, nem hardcode-olt "
         f"verziószámnak, kaptuk: {a.model_name}"
     )
+
+
+def test_prompt_bans_generic_boilerplate_summary_phrases(monkeypatch):
+    """Felhasználói visszajelzés: a Gemini összefoglalók sablonos, minden
+    hirdetésnél ugyanúgy hangzó nyitómondatokat használtak (pl. "A pozíció
+    tökéletesen illeszkedik a jelölt vezetői profiljába, mivel..." és
+    "...mind ideális egyezést mutatnak a hirdetéssel."), amik nem segítik
+    az áttekintést. Ez nem determinisztikusan garantálható LLM-viselkedés,
+    de azt igen, hogy a promptunk MINDIG tartalmazza a tiltó utasítást."""
+    captured = {}
+
+    class FakeResponse:
+        text = '{"score": 50, "summary": "teszt"}'
+
+    class FakeModels:
+        def generate_content(self, model, contents, config):
+            captured["contents"] = contents
+            return FakeResponse()
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            self.models = FakeModels()
+
+    import google.genai
+    monkeypatch.setattr(google.genai, "Client", FakeClient)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+
+    analyzer = JobAnalyzer(mock_mode=False)
+    analyzer.analyze_job({"title": "IT vezető", "description": "x" * 250, "company": ""})
+
+    prompt = captured["contents"]
+    assert "tökéletesen illeszkedik a jelölt vezetői profiljába" in prompt, (
+        "a promptnak tiltania kell ezt a konkrét sablonmondatot"
+    )
+    assert "ideális egyezést mutatnak" in prompt, (
+        "a promptnak tiltania kell ezt a másik sablonmondatot is"
+    )

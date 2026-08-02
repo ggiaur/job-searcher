@@ -192,6 +192,15 @@ Profil és Szabályok:
 Álláshirdetés:
 Cím: {title}
 Leírás: {description[:3000]}
+
+Fontos az összefoglaló (summary) megfogalmazásához:
+- Ne használj sablonos, semmitmondó nyitómondatokat, mint pl. "A pozíció
+  tökéletesen illeszkedik a jelölt vezetői profiljába, mivel..." vagy
+  "...mind ideális egyezést mutatnak a hirdetéssel." Ezek nem segítik az
+  áttekintést, mert minden hirdetésnél ugyanúgy hangzanak.
+- Írj konkrétan a HIRDETÉS tartalma alapján: mi az, ami ebben a KONKRÉT
+  hirdetésben illeszkedik vagy nem illeszkedik a profilhoz (pl. konkrét
+  feladatkör, csapatméret, iparág, technológia, szint).
 """
 
         for attempt in range(4):

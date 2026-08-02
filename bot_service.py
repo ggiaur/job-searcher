@@ -18,7 +18,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    try:
+        await query.answer()
+    except Exception as e:
+        # A query.answer() a Telegram szerverén ellenőrzött callback_query
+        # id-t igényel; ha ez elavul (pl. hálózati késés, vagy a felhasználó
+        # egy régi, már nem "friss" gombra kattint), ez a hívás
+        # BadRequest-tel elszáll. Ha ez a hívás dobja el a kivételt, ELŐBB
+        # kell megtörténnie, mint a lenti USER_STATE mentésnek/gombeltűnésnek
+        # - enélkül egy átmeneti hiba miatt a teljes interakció (és vele a
+        # felhasználó visszajelzése) nyomtalanul elveszne.
+        logger.warning(f"query.answer() failed (folytatjuk a feldolgozást): {e}")
 
     data = query.data
     parts = data.split("|", 1)

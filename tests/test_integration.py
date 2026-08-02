@@ -184,3 +184,86 @@ def test_quota_exhaustion_sends_explicit_error_notification():
     assert "kvóta" in joined or "kredit" in joined, (
         f"a hibaüzenetnek meg kell neveznie a valódi okot, kaptuk: {sent_errors}"
     )
+
+
+def test_high_level_english_requirement_filtered_before_gemini_call(monkeypatch):
+    """Regression: a persona.md szövegesen már leírta, hogy a felsőfokú/
+    tárgyalóképes/anyanyelvi angol elvárás kizáró ok - élesben mégis
+    többször átment ilyen hirdetés, mert ez csak Gemini-ítéletre épült, és
+    az LLM nem alkalmazta megbízhatóan. Ez a teszt azt ellenőrzi, hogy a
+    kódszintű előszűrő MEGÁLLÍTJA az ilyen hirdetést, mielőtt egyáltalán
+    eljutna a Gemini-hívásig (analyzer.analyze_job SOSEM hívódik meg rá)."""
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+
+    analyze_calls = []
+    original_analyze = agent.analyzer.analyze_job
+
+    def tracking_analyze(job):
+        analyze_calls.append(job.get("title"))
+        return original_analyze(job)
+
+    monkeypatch.setattr(agent.analyzer, "analyze_job", tracking_analyze)
+    monkeypatch.setattr(agent.scraper, "scrape_jobs", lambda: [
+        {
+            "url": "https://www.profession.hu/allas/it-vezeto-angol-felsofok-1",
+            "title": "IT vezető",
+            # >= 200 karakter, hogy a leírás-bővítő lépés (ami a mock módban
+            # egy generikus szöveggel írná felül a rövid leírást) ne
+            # aktiválódjon, és a "Angol felsőfok" kifejezés a szűrőig érjen.
+            "description": (
+                "Feladatkör: a hazai és nemzetközi IT csapat vezetése, infrastruktúra-fejlesztési "
+                "projektek felügyelete, beszállítói kapcsolatok kezelése, éves büdzsé tervezése. "
+                "Elvárás: Angol felsőfok szükséges a pozícióhoz, mivel a napi kommunikáció "
+                "nagy része nemzetközi partnerekkel zajlik angol nyelven."
+            ),
+        },
+        {
+            "url": "https://www.profession.hu/allas/it-vezeto-normalis-2",
+            "title": "IT vezető",
+            "description": (
+                "Feladatkör: a hazai IT csapat vezetése, infrastruktúra-fejlesztési projektek "
+                "felügyelete, beszállítói kapcsolatok kezelése, éves büdzsé tervezése. "
+                "Középfokú angol nyelvtudás előny, de nem feltétel a jelentkezéshez."
+            ),
+        },
+    ])
+    monkeypatch.setattr(agent.scraper, "search_jobs", lambda: [])
+
+    agent.run()
+
+    assert analyze_calls == ["IT vezető"], (
+        f"a felsőfokú angolt előíró hirdetésnek NEM lett volna szabad eljutnia "
+        f"a Gemini-elemzésig, kaptuk: {analyze_calls}"
+    )
+
+
+def test_english_written_listing_filtered_before_gemini_call(monkeypatch):
+    """Ugyanaz, mint fent, de az angol NYELVŰ hirdetésre (nem csak az angol
+    nyelvtudást előíró magyar hirdetésre)."""
+    os.environ["MOCK_MODE"] = "true"
+    agent = JobSearchAgent(mock_mode=True)
+
+    analyze_calls = []
+    original_analyze = agent.analyzer.analyze_job
+
+    def tracking_analyze(job):
+        analyze_calls.append(job.get("title"))
+        return original_analyze(job)
+
+    monkeypatch.setattr(agent.analyzer, "analyze_job", tracking_analyze)
+    monkeypatch.setattr(agent.scraper, "scrape_jobs", lambda: [{
+        "url": "https://www.profession.hu/allas/head-of-it-english-1",
+        "title": "Head of IT",
+        "description": (
+            "We are looking for an experienced IT leader to join our growing team "
+            "in Budapest. The successful candidate will lead cross functional projects, "
+            "manage vendor relationships and coordinate with international stakeholders "
+            "across multiple business units and time zones."
+        ),
+    }])
+    monkeypatch.setattr(agent.scraper, "search_jobs", lambda: [])
+
+    agent.run()
+
+    assert analyze_calls == [], f"az angol nyelvű hirdetést ki kellett volna szűrni, kaptuk: {analyze_calls}"

@@ -113,3 +113,28 @@ def test_notifier_summary_message_timestamp_is_last_line():
     msg = notifier.build_summary_message(found=10, relevant=2, duplicate=1, sent=2, runtime=5.0, scraped_urls=7)
     last_line = msg.splitlines()[-1]
     assert last_line.startswith("🕐 "), f"the timestamp must be the last line, got: {last_line!r}"
+
+
+def test_notifier_job_message_shows_language_requirement_when_present():
+    """Felhasználói kérés: minden esetben látszódjon a nyelvtudás/elvárás a
+    Telegram-kártyán, hogy ellenőrizhető legyen, a szűrő jól döntött-e."""
+    notifier = TelegramNotifier(mock_mode=True)
+    job = {
+        "title": "IT vezető",
+        "company": "Tech Corp",
+        "location": "Budapest",
+        "url": "https://x/1",
+        "language_requirement": "✅ Nincs magas szintű angol elvárás",
+    }
+    msg = notifier.format_job_message(job, 85, "Remek pozíció.")
+    assert "🌐" in msg
+    assert "Nincs magas szintű angol elvárás" in msg
+
+
+def test_notifier_job_message_omits_language_line_when_absent():
+    """Ha a job dict-ben nincs language_requirement kulcs (pl. régi, még nem
+    frissített hívó kód), ne törjön el az üzenetformázás."""
+    notifier = TelegramNotifier(mock_mode=True)
+    job = {"title": "IT vezető", "company": "Tech Corp", "location": "Budapest", "url": "https://x/1"}
+    msg = notifier.format_job_message(job, 85, "Remek pozíció.")
+    assert "🌐" not in msg

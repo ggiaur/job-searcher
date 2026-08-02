@@ -47,6 +47,12 @@ class TelegramNotifier:
         if salary:
             msg_lines.append(f"💰 {salary}")
 
+        # A felhasználó kérésére a nyelvi elvárás MINDEN esetben látszódjon,
+        # hogy ellenőrizhető legyen, a szűrő valóban jól döntött-e.
+        language_requirement = job.get("language_requirement", "")
+        if language_requirement:
+            msg_lines.append(f"🌐 {escape_html(language_requirement)}")
+
         msg_lines.extend([
             f"⭐ Relevancia: {score}/100",
             f"📝 {summary_escaped}",

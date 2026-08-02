@@ -82,3 +82,88 @@ def test_main_strips_whitespace_from_telegram_bot_token(monkeypatch, capsys):
         pass
 
     assert captured_token["value"] == "fake-token-with-crlf"
+
+
+def test_requirements_declares_webhooks_extra():
+    """Regression: a bot_service.py webhook módja (Application.run_webhook)
+    a python-telegram-bot [webhooks] extra csomagját igényli
+    (tornado/uvicorn-alapú webszerver komponens). Enélkül élesben, Cloud Run
+    Service-ként telepítve a konténer induláskor RuntimeError-ral elszáll:
+    "To use `start_webhook`, PTB must be installed via
+    `pip install \"python-telegram-bot[webhooks]\"`" - MÉG MIELŐTT a portra
+    kezdene figyelni, tehát a Cloud Run health check timeoutol és a
+    deployment meghiúsul. Ez pontosan a requirements.txt-drift hibaosztály,
+    ami már többször előfordult ebben a projektben (DECISIONS.md #4)."""
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    requirements = (root / "requirements.txt").read_text()
+
+    assert "python-telegram-bot[webhooks]" in requirements, (
+        "a requirements.txt-nek a [webhooks] extrával kell telepítenie a "
+        "python-telegram-bot csomagot, különben a webhook mód éles "
+        "induláskor RuntimeError-ral elszáll"
+    )
+
+
+def test_dislike_button_then_text_reason_records_feedback(tmp_path, monkeypatch):
+    """A teljes "szöveges tanítás" folyamat: elutasítás gomb -> a bot
+    indoklást kér -> a felhasználó szöveges választ ír -> a rendszer
+    elmenti a FeedbackStore-ba. Ez a funkció, amit a felhasználó jelzett,
+    hogy nem működik - itt valós, izolált (nem élő webhookon át küldött)
+    hívásokkal bizonyítjuk, hogy az ÜZLETI LOGIKA helyes.
+
+    (Élő webhookon át NEM szimulálható megbízhatóan: a query.answer()
+    valós, Telegram-szerver által ellenőrzött callback_query id-t igényel,
+    amit csak egy tényleges felhasználói kattintás tud generálni.)
+    """
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock
+
+    from tools.feedback import FeedbackStore
+
+    importlib.reload(bot_service)
+    feedback_file = tmp_path / "feedback_history.json"
+    bot_service.feedback_store = FeedbackStore(feedback_file=str(feedback_file))
+    bot_service.USER_STATE.clear()
+
+    user_id = 12345
+
+    # 1) Elutasítás gomb megnyomása
+    callback_query = MagicMock()
+    callback_query.answer = AsyncMock()
+    callback_query.data = "dislike|Teszt Allas"
+    callback_query.from_user.id = user_id
+    callback_query.message.reply_markup.inline_keyboard = [
+        [MagicMock(url="https://example.hu/teszt-allas")]
+    ]
+    callback_query.edit_message_reply_markup = AsyncMock()
+    callback_query.message.reply_text = AsyncMock()
+
+    update1 = MagicMock()
+    update1.callback_query = callback_query
+
+    asyncio.run(bot_service.button_callback(update1, MagicMock()))
+
+    assert user_id in bot_service.USER_STATE, "a gombnyomás után USER_STATE-nek tartalmaznia kell a felhasználót"
+    assert bot_service.USER_STATE[user_id]["action"] == "DISLIKE"
+    assert bot_service.USER_STATE[user_id]["job_url"] == "https://example.hu/teszt-allas"
+
+    # 2) Szöveges indoklás küldése
+    message = MagicMock()
+    message.from_user.id = user_id
+    message.text = "Túl sok utazást igényel a pozíció."
+    message.reply_text = AsyncMock()
+
+    update2 = MagicMock()
+    update2.message = message
+
+    asyncio.run(bot_service.handle_text_message(update2, MagicMock()))
+
+    # 3) Ellenőrzés: tényleg elmentődött-e a FeedbackStore-ba
+    saved = bot_service.feedback_store.load_feedbacks()
+    assert len(saved) == 1, f"pontosan 1 mentett visszajelzésnek kellene lennie, kaptunk: {saved}"
+    assert saved[0]["action"] == "DISLIKE"
+    assert saved[0]["job_title"] == "Teszt Allas"
+    assert saved[0]["reason"] == "Túl sok utazást igényel a pozíció."
+    assert user_id not in bot_service.USER_STATE, "a state-nek törlődnie kell mentés után"
