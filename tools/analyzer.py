@@ -49,14 +49,18 @@ class JobAnalyzer:
         # Gemini API-ra NEM használható. A fék hiánya így a felhasználó előre
         # fizetett kreditjét égette maximális sebességgel, amíg el nem fogyott.
         #
-        # Az ingyenes szinten percenkénti kéréslimit is van, ezért az
-        # alapértelmezés 6 mp (<= 10 kérés/perc). Fizetős szinten nyugodtan
-        # csökkenthető a GEMINI_MIN_INTERVAL_SEC változóval.
+        # Az ingyenes szinten élesben megmért, pontos limit: 15 kérés/perc/
+        # modell/projekt ("GenerateRequestsPerMinutePerProjectPerModel-
+        # FreeTier"). Az alapértelmezés 8 mp (7,5 kérés/perc) — ez tartalékot
+        # hagy a néha automatikusan újrapróbált (transiens 503/network hiba
+        # utáni) hívásoknak is, amik a látható "sikeres" hívásszámnál többet
+        # fogyaszthatnak a kvótából. Fizetős szinten nyugodtan csökkenthető a
+        # GEMINI_MIN_INTERVAL_SEC változóval.
         try:
-            self.min_call_interval = float(os.getenv("GEMINI_MIN_INTERVAL_SEC", "6.0"))
+            self.min_call_interval = float(os.getenv("GEMINI_MIN_INTERVAL_SEC", "8.0"))
         except ValueError:
-            logger.warning("GEMINI_MIN_INTERVAL_SEC nem szám, 6.0 mp-re állítva.")
-            self.min_call_interval = 6.0
+            logger.warning("GEMINI_MIN_INTERVAL_SEC nem szám, 8.0 mp-re állítva.")
+            self.min_call_interval = 8.0
         self.client = None
 
         # Két hitelesítési út létezik, és ez NEM csak technikai részlet:
@@ -90,16 +94,20 @@ class JobAnalyzer:
                     logger.info(f"Gemini kliens Vertex AI módban (project={project}, location={location})")
                 else:
                     self.client = genai.Client(api_key=self.api_key)
-                # "gemini-flash-latest" egy Google-fenntartott alias, ami
+                # "gemini-flash-lite-latest" egy Google-fenntartott alias, ami
                 # mindig az adott kulcshoz/projekthez aktuálisan támogatott
-                # flash modellre mutat. Korábban itt egy konkrét verziószámú
-                # név (gemini-2.5-flash) állt hardcode-olva - ez egy vadonatúj
-                # AI Studio projekt/kulcs alól 404-et adott ("no longer
-                # available to new users"), miközben ugyanaz a modellnév egy
-                # régebbi projektnél még működött. Az alias pont ezt a
-                # problémaosztályt oldja meg: nem kell tudni előre, melyik
-                # verziószám érhető el az adott kulcsnál.
-                self.model_name = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+                # flash-lite modellre mutat. Korábban itt egy konkrét
+                # verziószámú név (gemini-2.5-flash) állt hardcode-olva - ez
+                # egy vadonatúj AI Studio projekt/kulcs alól 404-et adott ("no
+                # longer available to new users"). Az alias megoldja ezt: nem
+                # kell tudni előre, melyik verziószám érhető el az adott
+                # kulcsnál. A "flash" (nem lite) változatra váltva élesben azt
+                # mértük, hogy egy vadonatúj projekt szabad-szintű kerete
+                # (15 kérés/perc/modell) néhány hirdetés után kimerül; a
+                # "-lite" változat ugyanezen kulccsal 15 gyors, egymást követő
+                # hívást is hiba nélkül kiszolgált, azonos minőségű,
+                # magyar nyelvű indoklással - ezért ez az alapértelmezés.
+                self.model_name = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
             except Exception as e:
                 logger.error(f"Error initializing google.genai SDK Client: {e}")
                 self.client = None

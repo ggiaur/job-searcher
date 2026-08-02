@@ -222,7 +222,7 @@ def test_min_call_interval_is_configurable_and_free_tier_safe(monkeypatch):
     a = JobAnalyzer(mock_mode=True)
     # Alapértelmezés: legalább 6 mp (<= 10 kérés/perc), ami a szűkös ingyenes
     # percenkénti limitek mellett is biztonságos.
-    assert a.min_call_interval >= 6.0, (
+    assert a.min_call_interval >= 8.0, (
         f"az alapértelmezett szünet túl rövid az ingyenes szinthez: {a.min_call_interval}"
     )
 
@@ -246,7 +246,7 @@ def test_analyzer_default_model_uses_latest_alias_not_hardcoded_version(monkeypa
 
     a = JobAnalyzer(mock_mode=False)
 
-    assert a.model_name == "gemini-flash-latest", (
+    assert a.model_name == "gemini-flash-lite-latest", (
         f"az alapértelmezésnek egy -latest aliasnak kell lennie, nem hardcode-olt "
         f"verziószámnak, kaptuk: {a.model_name}"
     )
