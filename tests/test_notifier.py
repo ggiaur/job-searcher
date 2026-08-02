@@ -88,9 +88,28 @@ def test_notifier_job_message_includes_local_timestamp():
     assert re.search(r"🕐 \d{4}-\d{2}-\d{2} \d{2}:\d{2}", msg), f"no timestamp line found in: {msg}"
 
 
+def test_notifier_job_message_timestamp_is_last_line():
+    """User asked for the timestamp at the BOTTOM of the message, not the top -
+    it was originally the first line."""
+    notifier = TelegramNotifier(mock_mode=True)
+    job = {"title": "IT vezető", "company": "Tech Corp", "location": "Budapest", "url": "https://x/1"}
+    msg = notifier.format_job_message(job, 85, "Remek pozíció.")
+    last_line = msg.splitlines()[-1]
+    assert last_line.startswith("🕐 "), f"the timestamp must be the last line, got: {last_line!r}"
+
+
 def test_notifier_summary_message_includes_local_timestamp():
     import re
 
     notifier = TelegramNotifier(mock_mode=True)
     msg = notifier.build_summary_message(found=10, relevant=2, duplicate=1, sent=2, runtime=5.0, scraped_urls=7)
     assert re.search(r"🕐 \d{4}-\d{2}-\d{2} \d{2}:\d{2}", msg), f"no timestamp line found in: {msg}"
+
+
+def test_notifier_summary_message_timestamp_is_last_line():
+    """User asked for the timestamp at the BOTTOM of the message, not under
+    the title - it was originally the second line."""
+    notifier = TelegramNotifier(mock_mode=True)
+    msg = notifier.build_summary_message(found=10, relevant=2, duplicate=1, sent=2, runtime=5.0, scraped_urls=7)
+    last_line = msg.splitlines()[-1]
+    assert last_line.startswith("🕐 "), f"the timestamp must be the last line, got: {last_line!r}"

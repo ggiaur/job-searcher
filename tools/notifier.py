@@ -38,7 +38,6 @@ class TelegramNotifier:
         summary_escaped = escape_html(summary)
 
         msg_lines = [
-            f"🕐 {datetime.now(BUDAPEST_TZ).strftime('%Y-%m-%d %H:%M')}",
             f"🎯 {title}",
             f"🏢 {company}",
             f"📍 {location}",
@@ -51,7 +50,10 @@ class TelegramNotifier:
         msg_lines.extend([
             f"⭐ Relevancia: {score}/100",
             f"📝 {summary_escaped}",
-            f"🔗 {url}"
+            f"🔗 {url}",
+            # A felhasználó kérésére az üzenet ALJÁN, hogy óránkénti futásoknál
+            # könnyen látszódjon, melyik kártya melyik futásból jött.
+            f"🕐 {datetime.now(BUDAPEST_TZ).strftime('%Y-%m-%d %H:%M')}",
         ])
 
         full_msg = "\n".join(msg_lines)
@@ -120,7 +122,6 @@ class TelegramNotifier:
 
         return (
             f"📊 **Futási Összefoglaló & Költségek**\n"
-            f"🕐 {datetime.now(BUDAPEST_TZ).strftime('%Y-%m-%d %H:%M')}\n"
             f"• Scraped URL-ek száma: {scraped_urls}\n"
             f"• Talált hirdetések összesen: {found}\n"
             f"• Duplikátumok: {duplicate}\n"
@@ -129,7 +130,10 @@ class TelegramNotifier:
             f"• Elküldött értesítések: {sent}\n"
             f"• Futási idő: {runtime:.2f} mp\n"
             f"💵 **Becsült futási költség:** ~${total_usd:.4f} USD (~{total_huf:.2f} Ft)\n"
-            f"   _(Gemini AI: ${estimated_gemini_usd:.4f} | Firecrawl Scrape: ${estimated_firecrawl_usd:.4f})_"
+            f"   _(Gemini AI: ${estimated_gemini_usd:.4f} | Firecrawl Scrape: ${estimated_firecrawl_usd:.4f})_\n"
+            # A felhasználó kérésére az üzenet ALJÁN, hogy óránkénti futásoknál
+            # könnyen látszódjon, melyik összefoglaló melyik futásból jött.
+            f"🕐 {datetime.now(BUDAPEST_TZ).strftime('%Y-%m-%d %H:%M')}"
         )
 
     def send_summary_notification(self, found: int, relevant: int, duplicate: int, sent: int, runtime: float, scraped_urls: int = 5) -> bool:
