@@ -169,3 +169,60 @@ gcloud run deploy job-searcher-bot \
 gcloud run services update job-searcher-bot --region=europe-west1 \
   --set-env-vars=WEBHOOK_URL=$(gcloud run services describe job-searcher-bot --region=europe-west1 --format='value(status.url)')
 ```
+
+---
+
+## 7. 💳 Gemini költség: AI Studio vs. Vertex AI
+
+A rendszer kétféleképpen érheti el a Gemini modellt, és ez **közvetlenül számít a
+költségek szempontjából**:
+
+| Út | Hitelesítés | Fedezi a GCP $300-as ingyenes kerete? |
+| :--- | :--- | :--- |
+| **AI Studio** (alapértelmezés) | `GEMINI_API_KEY` | ❌ **Nem.** A Google dokumentációja kimondja: *„The $300 credit can't pay for Gemini API in AI Studio costs."* |
+| **Vertex AI** (`GEMINI_USE_VERTEX=true`) | ADC / szolgáltatásfiók | ✅ **Igen**, sima GCP-szolgáltatásként számlázódik |
+
+### Mikor melyiket?
+
+- **AI Studio ingyenes szintje** (számlázás nélküli projektben létrehozott kulcs):
+  örökre ingyenes, de napi kéréslimit van rajta. Napi 2-3 futáshoz elég.
+- **AI Studio előre fizetett kredittel**: ha elfogy a kredit, a rendszer
+  `429 RESOURCE_EXHAUSTED / "Your prepayment credits are depleted"` hibát kap,
+  és **egyetlen hirdetést sem tud kiértékelni**. Ilyenkor a bot explicit
+  Telegram-riasztást küld (lásd `agents/job_search_agent.py`).
+- **Vertex AI**: a GCP-keretből fedezhető, nincs napi kéréslimit, és nem kell
+  API-kulcsot kezelni (Cloud Runon a szolgáltatásfiók hitelesít).
+
+### Vertex AI bekapcsolása
+
+```bash
+# 1. API engedélyezése a projektben (egyszeri)
+gcloud services enable aiplatform.googleapis.com --project=job-searcher-503608
+
+# 2. Helyi futtatáshoz: alapértelmezett hitelesítő adatok
+gcloud auth application-default login
+
+# 3. .env
+GEMINI_USE_VERTEX=true
+GCP_PROJECT_ID=job-searcher-503608
+GCP_LOCATION=europe-west1
+# GEMINI_API_KEY ilyenkor nem szükséges
+
+# 4. Cloud Runon a Job szolgáltatásfiókjának jogosultság kell:
+gcloud projects add-iam-policy-binding job-searcher-503608 \
+  --member="serviceAccount:<SZOLGALTATASFIOK>" \
+  --role="roles/aiplatform.user"
+```
+
+### Nagyságrendi költség (Vertex AI, Gemini 2.5 Flash)
+
+Árak: **$0,30 / 1M bemeneti token**, **$2,50 / 1M kimeneti token**.
+Kb. 58 hirdetés/futás, ~1500 bemeneti + ~200 kimeneti token hirdetésenként:
+
+| Futási gyakoriság | Napi költség | Havi költség |
+| :--- | :--- | :--- |
+| Napi 2× | ~$0,11 | ~$3 |
+| Óránként | ~$1,30 | ~$40 |
+
+> A becslés a fenti token-feltételezésen alapul, nem mért adat — az első
+> néhány valós futás után érdemes a tényleges számlázáshoz igazítani.

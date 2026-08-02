@@ -144,3 +144,61 @@ def test_all_runtime_imports_are_declared_in_requirements():
         if module in imported and dist not in requirements
     ]
     assert not missing, "Imported but missing from requirements.txt: " + ", ".join(missing)
+
+
+def test_analyzer_uses_vertex_ai_when_enabled(monkeypatch):
+    """A GEMINI_USE_VERTEX=true bekapcsolja a Vertex AI módot.
+
+    Miért kell ez: az AI Studio-n keresztüli Gemini API-t a GCP $300-os
+    ingyenes kerete NEM fedezi (a Google dokumentációja szó szerint kimondja:
+    "The $300 credit can't pay for Gemini API in AI Studio costs"). A Vertex
+    AI-on futó Gemini viszont sima GCP-szolgáltatásként számlázódik, tehát a
+    keretből fedezhető.
+
+    Vertex módban NEM API-kulccsal hitelesítünk, hanem a környezet
+    alapértelmezett hitelesítő adataival (Cloud Runon a szolgáltatásfiókkal) —
+    ezért a projektet és a régiót kell átadni, api_key-t nem.
+    """
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    import google.genai
+    monkeypatch.setattr(google.genai, "Client", FakeClient)
+
+    monkeypatch.setenv("GEMINI_USE_VERTEX", "true")
+    monkeypatch.setenv("GCP_PROJECT_ID", "job-searcher-503608")
+    monkeypatch.setenv("GCP_LOCATION", "europe-west1")
+    monkeypatch.setenv("GEMINI_API_KEY", "should-not-be-used-in-vertex-mode")
+
+    JobAnalyzer(mock_mode=False)
+
+    assert captured.get("vertexai") is True, f"vertexai=True kell, kaptuk: {captured}"
+    assert captured.get("project") == "job-searcher-503608"
+    assert captured.get("location") == "europe-west1"
+    assert "api_key" not in captured or captured.get("api_key") is None, (
+        "Vertex módban nem API-kulccsal hitelesítünk, hanem ADC-vel"
+    )
+
+
+def test_analyzer_defaults_to_ai_studio_when_vertex_not_enabled(monkeypatch):
+    """Vertex kikapcsolva (alapértelmezés) -> a régi, API-kulcsos AI Studio út.
+    Ez biztosítja, hogy az átállítás visszafelé kompatibilis maradjon."""
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    import google.genai
+    monkeypatch.setattr(google.genai, "Client", FakeClient)
+
+    monkeypatch.delenv("GEMINI_USE_VERTEX", raising=False)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-123")
+
+    JobAnalyzer(mock_mode=False)
+
+    assert captured.get("api_key") == "test-key-123"
+    assert not captured.get("vertexai")

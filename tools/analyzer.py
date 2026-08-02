@@ -41,10 +41,37 @@ class JobAnalyzer:
         self.last_call_time = 0.0
         self.client = None
 
-        if not self.mock_mode and self.api_key:
+        # Két hitelesítési út létezik, és ez NEM csak technikai részlet:
+        #
+        #   AI Studio (alapértelmezés): API-kulccsal, a
+        #     generativelanguage.googleapis.com végponton. A GCP $300-os
+        #     ingyenes kerete ezt NEM fedezi - a Google dokumentációja szó
+        #     szerint kimondja: "The $300 credit can't pay for Gemini API in
+        #     AI Studio costs". Külön (elő)fizetés kell hozzá, vagy az ingyenes
+        #     szint napi limitjein belül kell maradni.
+        #
+        #   Vertex AI (GEMINI_USE_VERTEX=true): sima GCP-szolgáltatásként
+        #     számlázódik, tehát a $300-as keretből fedezhető. Itt NEM
+        #     API-kulccsal hitelesítünk, hanem a környezet alapértelmezett
+        #     hitelesítő adataival (ADC) - Cloud Runon ez automatikusan a
+        #     szolgáltatásfiók, tehát nem kell titkot kezelni.
+        #     Feltétele: az aiplatform.googleapis.com engedélyezve legyen.
+        self.use_vertex = os.getenv("GEMINI_USE_VERTEX", "false").strip().lower() == "true"
+
+        if not self.mock_mode and (self.api_key or self.use_vertex):
             try:
                 from google import genai
-                self.client = genai.Client(api_key=self.api_key)
+                if self.use_vertex:
+                    project = os.getenv("GCP_PROJECT_ID", "").strip()
+                    location = os.getenv("GCP_LOCATION", "europe-west1").strip() or "europe-west1"
+                    if not project:
+                        raise ValueError(
+                            "GEMINI_USE_VERTEX=true esetén a GCP_PROJECT_ID megadása kötelező."
+                        )
+                    self.client = genai.Client(vertexai=True, project=project, location=location)
+                    logger.info(f"Gemini kliens Vertex AI módban (project={project}, location={location})")
+                else:
+                    self.client = genai.Client(api_key=self.api_key)
                 self.model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
             except Exception as e:
                 logger.error(f"Error initializing google.genai SDK Client: {e}")
