@@ -1,5 +1,6 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
+    id: build
     args:
       - 'build'
       - '-t'
@@ -7,6 +8,31 @@ steps:
       - '-t'
       - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:latest'
       - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher'
+
+  # Repoints the live Cloud Run Job at the image just pushed above, so a
+  # `git push` alone is enough to reach production - no separate manual
+  # `gcloud run jobs update` step needed anymore (that was the gap behind
+  # several "why isn't my fix live" reports: the build ran automatically,
+  # but the Job kept executing whatever image it was last pointed at
+  # until someone ran the update command by hand).
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'jobs'
+      - 'update'
+      - 'job-searcher'
+      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:$COMMIT_SHA'
+      - '--region=europe-west1'
+    waitFor: ['push']
 
 images:
   - 'europe-west1-docker.pkg.dev/$PROJECT_ID/job-searcher/job-searcher:$COMMIT_SHA'
